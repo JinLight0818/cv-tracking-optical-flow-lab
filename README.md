@@ -97,6 +97,94 @@ OpenCV-ээр бодит бичлэг болон гэрэл зургаар үү�
 
 Энд бүх хүчинтэй пикселийн дундаж EPE-г харьцуулсан. [Бүрэн EPE хүснэгт](results/csv/flow_summary.csv) · [Харьцуулсан график](results/figures/flow_error_and_dis_cc0.png)
 
+### Арга бүрийн кодын гол хэсэг
+
+#### Объект дагах
+
+Бүх дагагчид эхний кадр болон гараар тэмдэглэсэн хүрээг өгнө. Хүрээг `(x, y, өргөн, өндөр)` дарааллаар пикселээр өгдөг. `update()` нь дараагийн кадрт объектыг олсон эсэх болон таамагласан хүрээг буцаана.
+
+| Арга | Төсөлд ашигласан үүсгэгч | Хүрээг яаж олдог вэ? |
+| --- | --- | --- |
+| STATIC | `StaticBaselineTracker()` | Эхний хүрээг хадгалаад дараагийн кадр бүрд буцаана. |
+| BOOSTING | `cv2.legacy.TrackerBoosting_create()` | Объект ба дэвсгэрийг ялгах хэд хэдэн энгийн дүрмийг нэгтгэж, дагах явцад шинэчилнэ. |
+| MIL | `cv2.TrackerMIL_create()` | Нэг хүрээг зөв гэж шууд тогтоохын оронд объектын ойролцоох хэд хэдэн хүрээг багцаар нь ашиглаж сурна. |
+| KCF | `cv2.TrackerKCF_create()` | Өмнөх дүрстэй хамгийн төстэй хэсгийг ойр орчмоос хайна. Тэрэгний туршилтад хүрээний хэмжээ тогтмол байсан. |
+| TLD | `cv2.legacy.TrackerTLD_create()` | Дагалтын зэрэгцээ өмнө сурсан дүрсээр объектыг дахин хайна. |
+| MEDIANFLOW | `cv2.legacy.TrackerMedianFlow_create()` | Хүрээн доторх цэгүүдийг урагш, буцааж дагаж шалгаад хүрээний шилжилт, хэмжээг тооцно. |
+| CSRT | `cv2.TrackerCSRT_create()` | Объектод хамаарах найдвартай шинжүүдэд илүү жин өгч, байрлал болон хэмжээг шинэчилнэ. |
+| CSRT_REDETECT | `CSRTReDetectTracker()` | CSRT-ийн хүрээ итгэлгүй болсон кадрууд дараалбал хадгалсан загвараар дүрсийг дахин хайна. Олдсон байрлал хэдэн кадр дараалан тогтвортой байвал CSRT-г тэндээс эхлүүлнэ. |
+
+Энэ хэсэгт `frames` нь уншсан кадрууд, `initial_box` нь эхний кадрын хүрээ. `method`-д хүснэгтийн аль ч аргын нэрийг өгч болно.
+
+```python
+from trackers import resolve_tracker_factory, safe_tracker_init
+
+method = "CSRT"
+use_legacy = method in {"BOOSTING", "TLD", "MEDIANFLOW"}
+factory, binding = resolve_tracker_factory(method, prefer_legacy=use_legacy)
+if factory is None:
+    raise RuntimeError(f"{method}: {binding}")
+
+tracker = factory()
+started, note = safe_tracker_init(tracker, frames[0], initial_box)
+if not started:
+    raise RuntimeError(note)
+
+for frame in frames[1:]:
+    found, box = tracker.update(frame)
+    if found:
+        x, y, width, height = box
+```
+
+[Дагагч үүсгэх, эхлүүлэх код](trackers.py#L212) · [Дахин хайх CSRT-ийн код](trackers.py#L149) · [Туршилтад ажиллуулсан давталт](benchmark_track.py#L154)
+
+#### Оптик урсгал
+
+Shi–Tomasi эхний кадраас цөөн цэг сонгоно. Lucas–Kanade тэдгээр цэг дараагийн кадрт хаана очсоныг олно. Farnebäck ба DIS нь пиксел бүрд хэвтээ, босоо хоёр шилжилт тооцно. Доорх `frame0`, `frame1` нь OpenCV-ээр уншсан дараалсан хоёр кадр.
+
+```python
+import cv2
+
+from config import FARNEBACK_PDF, LK_PDF, LK_SMALL, SHI_TOMASI_PDF
+
+gray0 = cv2.cvtColor(frame0, cv2.COLOR_BGR2GRAY)
+gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+
+# Shi–Tomasi selects points. Lucas–Kanade follows them.
+points0 = cv2.goodFeaturesToTrack(gray0, mask=None, **SHI_TOMASI_PDF)
+if points0 is not None:
+    for settings in (LK_PDF, LK_SMALL):
+        points1, status, _ = cv2.calcOpticalFlowPyrLK(
+            gray0, gray1, points0, None, **settings
+        )
+        tracked_points = points1[status.ravel() == 1]
+
+# Farnebäck and the three DIS presets return a vector per pixel.
+farneback = cv2.calcOpticalFlowFarneback(gray0, gray1, None, **FARNEBACK_PDF)
+for preset in (
+    cv2.DISOPTICAL_FLOW_PRESET_ULTRAFAST,
+    cv2.DISOPTICAL_FLOW_PRESET_FAST,
+    cv2.DISOPTICAL_FLOW_PRESET_MEDIUM,
+):
+    dis_flow = cv2.DISOpticalFlow_create(preset).calc(gray0, gray1, None)
+```
+
+`status = 1` нь Lucas–Kanade тухайн цэгийг олсон гэж мэдээлснийг заана. Туршилтад `LK_PDF`-ийн **200 × 200** болон `LK_SMALL`-ийн **15 × 15** пикселийн хайлтын цонхыг харьцуулсан. DIS-ийн **ULTRAFAST**, **FAST**, **MEDIUM** нь нэг аргын гурван бэлэн тохиргоо. [Туршилтын тохиргоо](config.py#L36) · [Оптик урсгалын харьцуулалтын код](benchmark_flow.py#L123)
+
+#### Камерын хөдөлгөөнийг хасах
+
+Нохойн бичлэгт Lucas–Kanade-аар цэгүүдийг урагш, буцааж дагаж шалгасан. Үлдсэн цэгүүдийн шилжилтээр RANSAC камерын ерөнхий хөдөлгөөнийг тооцно. Дараа нь нийт урсгалаас камерынхыг хасаж, үлдсэн хөдөлгөөнийг харуулна.
+
+```python
+from benchmark_flow import compute_camera_motion_compensation
+
+raw_flow, camera_flow, residual_flow = compute_camera_motion_compensation(
+    frame0, frame1, flow_method="dis_medium"
+)
+```
+
+[Камерын хөдөлгөөн тооцох код](benchmark_flow.py#L418)
+
 ### Нэр томьёоны тайлбар
 
 | Үг | Энэ тайланд ямар утгатай вэ? |
