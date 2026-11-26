@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 
 from config import CSV_DIR
+from custom_video_lab import load_verified_gt
 from dataset_prep import match_frames_and_masks
 from metrics import compute_flow_regions, compute_recovery_stats, epe, epe_map, iou, mask_to_bbox, read_flo, validate_box, write_flo
 from trackers import CSRTReDetectTracker, StaticBaselineTracker, resolve_tracker_factory, safe_tracker_init
@@ -146,6 +147,31 @@ class MetricsAndPipelineTests(unittest.TestCase):
                 cc_rows = list(csv.DictReader(f))
             dis_bmx = next(r for r in cc_rows if r["pair"] == "DAVIS:bmx_trees_f10" and r["flow_method"] == "dis_medium")
             self.assertGreater(float(dis_bmx["bg_reduction_pct"]), 80.0)
+
+    def test_load_verified_gt_rejects_mismatches_and_checks_phone_csvs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "gt.csv"
+            with open(p, "w", newline="") as f:
+                w = csv.writer(f)
+                w.writerow(["frame", "orig_frame", "timestamp_s", "present", "gt_state", "x", "y", "w", "h"])
+                w.writerow([0, 42, 1.75, 1, "visible", 10, 20, 30, 40])
+                w.writerow([1, 43, 1.79, 1, "visible", 12, 20, 30, 40])
+
+            loaded = load_verified_gt(p, [42, 43])
+            self.assertEqual(len(loaded), 2)
+            with self.assertRaises(ValueError):
+                load_verified_gt(p, [42, 43, 44])
+            with self.assertRaises(ValueError):
+                load_verified_gt(p, [42, 99])
+
+        pv_path = CSV_DIR / "phone_videos_summary.csv"
+        if pv_path.exists():
+            with open(pv_path, newline="") as f:
+                pv_rows = list(csv.DictReader(f))
+            self.assertEqual(len(pv_rows), 24)
+            for r in pv_rows:
+                self.assertEqual(r["absent_frames"], "0")
+                self.assertEqual(r["absent_fp_pct"], "N/A (0 кадр)")
 
 
 if __name__ == "__main__":

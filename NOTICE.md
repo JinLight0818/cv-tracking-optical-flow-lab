@@ -38,3 +38,10 @@ Raw third-party datasets and course PDFs are **excluded** from this repository (
 5. **LaSOT (`bicycle-11`, frames 1–120)**
    - URL: `http://vision.cs.stonybrook.edu/~lasot/` (mirror used: `https://huggingface.co/datasets/l-lt/LaSOT`)
    - Terms: Academic research dataset (Fan et al., *LaSOT: A High-Quality Benchmark for Large-Scale Single Object Tracking*, CVPR 2019). Raw video frames and ground-truth files are excluded from GitHub.
+
+6. **User-Provided External Video Clips (`stable`, `moving_camera`, `occlusion`)**
+   - Local source filenames (excluded from Git via `.gitignore`, hashed for reproducibility):
+     - `Тогтвортой камертай жишээ.mp4` (`stable`, `1920x1080`, `23.976 fps`, SHA-256 prefix `77e5daee4220630b`, container metadata `ISO Media file produced by Google Inc.`, clip `orig 664..721`)
+     - `Камер өөрөө хөдөлж байгаа жишээ.mp4` (`moving_camera`, `1920x1080`, `25.000 fps`, SHA-256 prefix `df3dd08119b28dae`, container metadata `ISO Media file produced by Google Inc.`, clip `orig 405..515`)
+     - `Объект халхлагдаад дахин гарч ирэх жишээ.mp4` (`occlusion`, `720x1280`, `24.000 fps`, SHA-256 prefix `fd1c402e850052c9`, container metadata `ISO Media file produced by Google Inc.`, clip `orig 42..235`)
+   - Public redistribution note: Because these `.mp4` files are externally encoded web downloads whose public redistribution license is unverified, neither raw videos nor extracted RGB video frames are committed or published to GitHub. Only local analysis CSVs (`results/csv/phone_*.csv`, `results/csv/track_{stable,moving_camera,occlusion}_*.csv`) and source-image-free coordinate schematics, pure optical-flow HSV/vector plots, and quantitative charts (`results/figures/custom_videos/*.png`) are published; raw RGB QA overlays remain strictly in `results/local_only/`.

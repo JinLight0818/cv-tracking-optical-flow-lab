@@ -27,7 +27,8 @@ results/csv/track_MEDIANFLOW.csv
 results/csv/track_MIL.csv
 results/csv/track_TLD.csv
 
-# Raw third-party datasets & webcam captures (do not publish)
+# Raw third-party datasets, source MP4s & webcam captures (do not publish)
+/*.mp4
 data/
 results/webcam/
 *.zip

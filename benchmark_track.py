@@ -267,7 +267,7 @@ def evaluate_tracker(
     for idx in range(len(frames)):
         gt = gt_rows[idx]
         gt_present = gt["present"] == 1 and validate_box(gt["box"], frames[idx].shape)
-        if gt["present"] == 1 and not gt_present:
+        if gt["present"] < 0 or (gt["present"] == 1 and not gt_present):
             no_gt_frames += 1
 
         raw_ok, box = preds[idx]
