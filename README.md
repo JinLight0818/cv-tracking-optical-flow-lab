@@ -175,6 +175,17 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
+### PDF-ийн жишээг хурдан шалгах
+
+Дээрх суулгалтыг хийсний дараа төслийн үндсэн хавтсаас ажиллуулна. Эхний команд Wikimedia Commons-ийн зургийг татаж, жишээ кадруудыг бэлдэнэ. Хоёр дахь команд таван объект дагагч, Lucas–Kanade, Farnebäck-ийн жишээг цонх нээлгүй ажиллуулна.
+
+```bash
+python dataset_prep.py --fetch-wikimedia --generate-controlled
+python reproduce_pdf.py --mode all-pdf --no-show
+```
+
+Долоон MP4 бичлэг `results/videos/` дотор `pdf_replay_` угтвартай үүснэ. Хэмжилтийн CSV файлууд `results/csv/`-д хадгалагдана.
+
 ### Галт тэрэгний хэмжилтийг давтах
 
 ```bash
