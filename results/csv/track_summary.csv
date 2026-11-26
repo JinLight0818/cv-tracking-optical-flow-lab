@@ -1,0 +1,36 @@
+sequence,resolution,total_frames,eval_frames,absent_frames,no_gt_frames,tracker,binding,init_ok,mean_iou,iou_ge_05_pct,failure_pct,drift_success_true,absent_fp_frames,absent_fp_pct,reappear_frame,recovery_frames,median_ms,fps,opencv_version
+ctrl_bicycle_occ,640x480,40,34,5,0,STATIC,StaticBaselineTracker,1,0.0609,2.94,0.0,30,5,100.0,23,эргэж олоогүй,0.0,2861965.21,4.14.0
+ctrl_bicycle_occ,640x480,40,34,5,0,BOOSTING,cv2.legacy.TrackerBoosting_create,1,0.2951,29.41,0.0,19,5,100.0,23,эргэж олоогүй,15.903,62.88,4.14.0
+ctrl_bicycle_occ,640x480,40,34,5,0,MIL,cv2.TrackerMIL_create,1,0.3127,38.24,0.0,19,5,100.0,23,эргэж олоогүй,18.232,54.85,4.14.0
+ctrl_bicycle_occ,640x480,40,34,5,0,KCF,cv2.TrackerKCF_create,1,0.2512,38.24,58.82,0,0,0.0,23,эргэж олоогүй,2.665,375.27,4.14.0
+ctrl_bicycle_occ,640x480,40,34,5,0,TLD,cv2.legacy.TrackerTLD_create,1,0.5057,70.59,2.94,5,0,0.0,23,6,18.239,54.83,4.14.0
+ctrl_bicycle_occ,640x480,40,34,5,0,MEDIANFLOW,cv2.legacy.TrackerMedianFlow_create,1,0.3485,35.29,0.0,19,5,100.0,23,эргэж олоогүй,0.748,1336.21,4.14.0
+ctrl_bicycle_occ,640x480,40,34,5,0,CSRT,cv2.TrackerCSRT_create,1,0.3402,35.29,50.0,2,0,0.0,23,эргэж олоогүй,9.287,107.68,4.14.0
+ctrl_bicycle_cam_shift,640x480,24,23,0,0,STATIC,StaticBaselineTracker,1,0.268,21.74,0.0,12,0,0.0,-,N/A,0.0,2239096.46,4.14.0
+ctrl_bicycle_cam_shift,640x480,24,23,0,0,BOOSTING,cv2.legacy.TrackerBoosting_create,1,0.9845,100.0,0.0,0,0,0.0,-,N/A,18.325,54.57,4.14.0
+ctrl_bicycle_cam_shift,640x480,24,23,0,0,MIL,cv2.TrackerMIL_create,1,1.0,100.0,0.0,0,0,0.0,-,N/A,17.016,58.77,4.14.0
+ctrl_bicycle_cam_shift,640x480,24,23,0,0,KCF,cv2.TrackerKCF_create,1,0.8674,100.0,0.0,0,0,0.0,-,N/A,4.021,248.67,4.14.0
+ctrl_bicycle_cam_shift,640x480,24,23,0,0,TLD,cv2.legacy.TrackerTLD_create,1,0.6065,100.0,0.0,0,0,0.0,-,N/A,20.003,49.99,4.14.0
+ctrl_bicycle_cam_shift,640x480,24,23,0,0,MEDIANFLOW,cv2.legacy.TrackerMedianFlow_create,1,0.9986,100.0,0.0,0,0,0.0,-,N/A,0.733,1363.6,4.14.0
+ctrl_bicycle_cam_shift,640x480,24,23,0,0,CSRT,cv2.TrackerCSRT_create,1,0.955,100.0,0.0,0,0,0.0,-,N/A,18.937,52.81,4.14.0
+davis_bmx_trees_bike,854x480,80,79,0,0,STATIC,StaticBaselineTracker,1,0.2186,24.05,0.0,52,0,0.0,62,эргэж олоогүй,0.0,3101566.45,4.14.0
+davis_bmx_trees_bike,854x480,80,79,0,0,BOOSTING,cv2.legacy.TrackerBoosting_create,1,0.238,20.25,0.0,46,0,0.0,62,эргэж олоогүй,15.11,66.18,4.14.0
+davis_bmx_trees_bike,854x480,80,79,0,0,MIL,cv2.TrackerMIL_create,1,0.1968,21.52,0.0,57,0,0.0,62,эргэж олоогүй,17.253,57.96,4.14.0
+davis_bmx_trees_bike,854x480,80,79,0,0,KCF,cv2.TrackerKCF_create,1,0.091,11.39,88.61,0,0,0.0,62,эргэж олоогүй,4.613,216.8,4.14.0
+davis_bmx_trees_bike,854x480,80,79,0,0,TLD,cv2.legacy.TrackerTLD_create,1,0.3002,30.38,0.0,36,0,0.0,62,эргэж олоогүй,19.799,50.51,4.14.0
+davis_bmx_trees_bike,854x480,80,79,0,0,MEDIANFLOW,cv2.legacy.TrackerMedianFlow_create,1,0.0,0.0,100.0,0,0,0.0,62,эргэж олоогүй,0.922,1084.81,4.14.0
+davis_bmx_trees_bike,854x480,80,79,0,0,CSRT,cv2.TrackerCSRT_create,1,0.54,53.16,0.0,7,0,0.0,62,эргэж олоогүй,20.486,48.81,4.14.0
+davis_bmx_trees_rider,854x480,80,79,0,0,STATIC,StaticBaselineTracker,1,0.1389,12.66,0.0,59,0,0.0,69,эргэж олоогүй,0.0,3466432.65,4.14.0
+davis_bmx_trees_rider,854x480,80,79,0,0,BOOSTING,cv2.legacy.TrackerBoosting_create,1,0.5256,59.49,0.0,13,0,0.0,69,эргэж олоогүй,19.031,52.55,4.14.0
+davis_bmx_trees_rider,854x480,80,79,0,0,MIL,cv2.TrackerMIL_create,1,0.5261,59.49,0.0,11,0,0.0,69,эргэж олоогүй,19.323,51.75,4.14.0
+davis_bmx_trees_rider,854x480,80,79,0,0,KCF,cv2.TrackerKCF_create,1,0.0873,11.39,88.61,0,0,0.0,69,эргэж олоогүй,2.456,407.22,4.14.0
+davis_bmx_trees_rider,854x480,80,79,0,0,TLD,cv2.legacy.TrackerTLD_create,1,0.4398,55.7,0.0,16,0,0.0,69,эргэж олоогүй,16.916,59.12,4.14.0
+davis_bmx_trees_rider,854x480,80,79,0,0,MEDIANFLOW,cv2.legacy.TrackerMedianFlow_create,1,0.1774,18.99,5.06,56,0,0.0,69,эргэж олоогүй,0.988,1011.85,4.14.0
+davis_bmx_trees_rider,854x480,80,79,0,0,CSRT,cv2.TrackerCSRT_create,1,0.5914,81.01,15.19,0,0,0.0,69,эргэж олоогүй,16.019,62.43,4.14.0
+davis_car_shadow,854x480,40,39,0,0,STATIC,StaticBaselineTracker,1,0.4428,28.21,0.0,0,0,0.0,-,N/A,0.0,3057384.83,4.14.0
+davis_car_shadow,854x480,40,39,0,0,BOOSTING,cv2.legacy.TrackerBoosting_create,1,0.4681,51.28,0.0,8,0,0.0,-,N/A,20.327,49.2,4.14.0
+davis_car_shadow,854x480,40,39,0,0,MIL,cv2.TrackerMIL_create,1,0.5542,53.85,0.0,0,0,0.0,-,N/A,19.25,51.95,4.14.0
+davis_car_shadow,854x480,40,39,0,0,KCF,cv2.TrackerKCF_create,1,0.5482,53.85,0.0,0,0,0.0,-,N/A,34.497,28.99,4.14.0
+davis_car_shadow,854x480,40,39,0,0,TLD,cv2.legacy.TrackerTLD_create,1,0.5252,69.23,0.0,6,0,0.0,-,N/A,18.304,54.63,4.14.0
+davis_car_shadow,854x480,40,39,0,0,MEDIANFLOW,cv2.legacy.TrackerMedianFlow_create,1,0.7271,100.0,0.0,0,0,0.0,-,N/A,1.181,846.82,4.14.0
+davis_car_shadow,854x480,40,39,0,0,CSRT,cv2.TrackerCSRT_create,1,0.6612,76.92,0.0,0,0,0.0,-,N/A,25.528,39.17,4.14.0

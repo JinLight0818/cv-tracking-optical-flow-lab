@@ -1,0 +1,36 @@
+# Virtual envs & python caches
+.venv/
+__pycache__/
+*.pyc
+.env
+*.token
+secrets/
+
+# Unrelated workspace artifacts & unauthorized course PDFs
+*.pdf
+05-*
+Screenshot*
+detection-plate-blur/
+manifest.py
+synthetic_seq.py
+results/images/
+results/videos/
+results/local_only/
+results/csv/gt.csv
+results/csv/track_BOOSTING.csv
+results/csv/track_CSRT.csv
+results/csv/track_KCF.csv
+results/csv/track_MEDIANFLOW.csv
+results/csv/track_MIL.csv
+results/csv/track_TLD.csv
+
+# Raw third-party datasets & webcam captures (do not publish)
+data/
+results/webcam/
+*.zip
+*.flo
+*.JPG
+*.jpg
+*.jpeg
+*.mov
+*.avi

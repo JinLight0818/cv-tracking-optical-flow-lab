@@ -1,0 +1,15 @@
+tracker,binding,available,class_name,init_return,update_ok,empty_roi_handled,opencv_version
+BOOSTING,cv2.TrackerBoosting_create,0,-,-,0,-,4.14.0
+BOOSTING,cv2.legacy.TrackerBoosting_create,1,TrackerBoosting,True,1,rejected(empty_roi),4.14.0
+MIL,cv2.TrackerMIL_create,1,TrackerMIL,None,1,rejected(empty_roi),4.14.0
+MIL,cv2.legacy.TrackerMIL_create,1,TrackerMIL,True,1,rejected(empty_roi),4.14.0
+KCF,cv2.TrackerKCF_create,1,TrackerKCF,None,1,rejected(empty_roi),4.14.0
+KCF,cv2.legacy.TrackerKCF_create,1,TrackerKCF,True,1,rejected(empty_roi),4.14.0
+TLD,cv2.TrackerTLD_create,0,-,-,0,-,4.14.0
+TLD,cv2.legacy.TrackerTLD_create,1,TrackerTLD,True,1,rejected(empty_roi),4.14.0
+MEDIANFLOW,cv2.TrackerMedianFlow_create,0,-,-,0,-,4.14.0
+MEDIANFLOW,cv2.legacy.TrackerMedianFlow_create,1,TrackerMedianFlow,True,1,rejected(empty_roi),4.14.0
+CSRT,cv2.TrackerCSRT_create,1,TrackerCSRT,None,1,rejected(empty_roi),4.14.0
+CSRT,cv2.legacy.TrackerCSRT_create,1,TrackerCSRT,True,1,rejected(empty_roi),4.14.0
+MOSSE,cv2.TrackerMOSSE_create,0,-,-,0,-,4.14.0
+MOSSE,cv2.legacy.TrackerMOSSE_create,1,TrackerMOSSE,True,0,rejected(empty_roi),4.14.0
