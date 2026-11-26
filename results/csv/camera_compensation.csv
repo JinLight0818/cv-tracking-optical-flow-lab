@@ -1,0 +1,7 @@
+pair,flow_method,raw_bg_mag,est_cam_mag,residual_bg_mag,bg_reduction_pct,raw_fg_mag,residual_fg_mag
+Controlled:cam_shift,farneback,4.7534,6.0866,1.3409,71.79,-,-
+Controlled:cam_plus_obj,farneback,4.3599,5.0967,1.6123,63.02,9.5913,14.6164
+DAVIS:bmx_trees_f10,farneback,13.4179,21.1592,8.3006,38.14,3.8772,21.7035
+Controlled:cam_shift,dis_medium,6.0886,6.0866,0.0285,99.53,-,-
+Controlled:cam_plus_obj,dis_medium,5.1514,5.0967,0.4162,91.92,9.9843,15.0164
+DAVIS:bmx_trees_f10,dis_medium,20.2043,21.1592,1.6203,91.98,3.2235,21.8179

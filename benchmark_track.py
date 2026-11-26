@@ -1,13 +1,14 @@
-"""Single-thread, multi-repeat object tracking benchmark across DAVIS and controlled CC0 data."""
+"""Single-thread object tracking benchmark: core, occlusion ladder, stress tests, ROI sensitivity, and LaSOT generalization."""
 
 from __future__ import annotations
 
 import csv
 import statistics
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -19,11 +20,12 @@ from config import (
     IOU_THRESHOLD,
     RECOVERY_CONSECUTIVE,
     TIMING_REPEATS,
+    WARMUP_RUNS,
     enforce_single_thread,
     ensure_dirs,
 )
-from metrics import iou, validate_box
-from tracker_binding_check import resolve_tracker_factory, safe_tracker_init
+from metrics import compute_recovery_stats, iou, validate_box
+from trackers import resolve_tracker_factory, safe_tracker_init
 
 
 @dataclass
@@ -32,83 +34,137 @@ class SequenceSpec:
     gt_csv: Path
     img_dir: Path
     reappear_frame: Optional[int]
+    recovery_kind: str  # "full_occlusion", "heavy_occlusion", "none"
     description: str
 
 
-SEQUENCES = [
+CORE_SEQUENCES = [
     SequenceSpec(
         name="ctrl_bicycle_occ",
         gt_csv=CSV_DIR / "ctrl_bicycle_occ_gt.csv",
         img_dir=DATA_DIR / "controlled" / "bicycle_occ_seq",
-        reappear_frame=23,  # Frame 18..22 are 100% occluded; frame 23 is first visible reappearance
-        description="CC0 photo controlled sequence: moving target + scale + distractor + 5-frame full occlusion",
+        reappear_frame=23,
+        recovery_kind="full_occlusion",
+        description="CC0 photo controlled: moving target + scale + distractor + 5-frame full occlusion",
     ),
     SequenceSpec(
         name="ctrl_bicycle_cam_shift",
         gt_csv=CSV_DIR / "ctrl_bicycle_cam_shift_gt.csv",
         img_dir=DATA_DIR / "controlled" / "bicycle_cam_shift_seq",
         reappear_frame=None,
-        description="CC0 photo controlled sequence: whole-frame camera pan shift (-6, -1 px/frame)",
+        recovery_kind="none",
+        description="CC0 photo controlled: whole-frame camera pan shift (-6, -1 px/frame)",
     ),
     SequenceSpec(
         name="davis_bmx_trees_bike",
         gt_csv=CSV_DIR / "davis_bmx_trees_bike_gt.csv",
         img_dir=DATA_DIR / "davis" / "DAVIS" / "JPEGImages" / "480p" / "bmx-trees",
-        reappear_frame=62,  # Minimum visible area (426 px) behind tree trunk occurs at frame 61
-        description="DAVIS 2017 bmx-trees (obj_id=1 bike): visible-part GT, heavy tree occlusion & scale shrink",
+        reappear_frame=62,
+        recovery_kind="heavy_occlusion",
+        description="DAVIS 2017 bmx-trees (obj_id=1 bike): visible-part GT, heavy tree occlusion",
     ),
     SequenceSpec(
         name="davis_bmx_trees_rider",
-        gt_csv=CSV_DIR / "davis_bmx_trees_bike_gt.csv".replace("bike", "rider"),
+        gt_csv=CSV_DIR / "davis_bmx_trees_rider_gt.csv",
         img_dir=DATA_DIR / "davis" / "DAVIS" / "JPEGImages" / "480p" / "bmx-trees",
-        reappear_frame=69,  # Minimum visible area (429 px) occurs at frame 68
-        description="DAVIS 2017 bmx-trees (obj_id=2 rider): visible-part GT, heavy occlusion & camera pan",
+        reappear_frame=69,
+        recovery_kind="heavy_occlusion",
+        description="DAVIS 2017 bmx-trees (obj_id=2 rider): visible-part GT, heavy occlusion & pan",
     ),
     SequenceSpec(
         name="davis_car_shadow",
         gt_csv=CSV_DIR / "davis_car_shadow_gt.csv",
         img_dir=DATA_DIR / "davis" / "DAVIS" / "JPEGImages" / "480p" / "car-shadow",
         reappear_frame=None,
+        recovery_kind="none",
         description="DAVIS 2017 car-shadow (obj_id=1 car): ~3.5x area shrink + shadow illumination change",
     ),
 ]
 
+LADDER_SEQUENCES = [
+    SequenceSpec("ctrl_occ_ladder_3f", CSV_DIR / "ctrl_occ_ladder_3f_gt.csv", DATA_DIR / "controlled" / "occ_ladder_3f", 29, "full_occlusion", "3-frame full occlusion"),
+    SequenceSpec("ctrl_occ_ladder_10f", CSV_DIR / "ctrl_occ_ladder_10f_gt.csv", DATA_DIR / "controlled" / "occ_ladder_10f", 33, "full_occlusion", "11-frame full occlusion"),
+    SequenceSpec("ctrl_occ_ladder_20f", CSV_DIR / "ctrl_occ_ladder_20f_gt.csv", DATA_DIR / "controlled" / "occ_ladder_20f", 39, "full_occlusion", "22-frame full occlusion"),
+    SequenceSpec("ctrl_occ_ladder_10f_distractor", CSV_DIR / "ctrl_occ_ladder_10f_distractor_gt.csv", DATA_DIR / "controlled" / "occ_ladder_10f_distractor", 33, "full_occlusion", "11-frame full occlusion + similar bicycle distractor"),
+]
 
-def load_sequence(spec: SequenceSpec) -> Tuple[List[np.ndarray], List[Dict]]:
-    """Load frames and GT rows from disk outside any timed section."""
+LASOT_SEQUENCES = [
+    SequenceSpec(
+        name="lasot_bicycle11",
+        gt_csv=CSV_DIR / "lasot_bicycle11_gt.csv",
+        img_dir=DATA_DIR / "lasot" / "bicycle-11" / "img",
+        reappear_frame=79,
+        recovery_kind="full_occlusion",
+        description="Held-out LaSOT bicycle-11 (120 frames, real full occlusion frames 74-78)",
+    ),
+    SequenceSpec(
+        name="davis_scooter_black",
+        gt_csv=CSV_DIR / "davis_scooter_black_gt.csv",
+        img_dir=DATA_DIR / "davis" / "DAVIS" / "JPEGImages" / "480p" / "scooter-black",
+        reappear_frame=None,
+        recovery_kind="none",
+        description="Held-out DAVIS scooter-black (43 frames, visible-part GT)",
+    ),
+]
+
+
+def load_sequence(spec: SequenceSpec) -> Tuple[List[Path], List[np.ndarray], List[Dict]]:
+    """Load frame paths, BGR images, and GT rows (visible, optional amodal & distractor)."""
+    img_paths: List[Path] = []
     frames: List[np.ndarray] = []
     gt_rows: List[Dict] = []
     with open(spec.gt_csv, newline="") as f:
         for row in csv.DictReader(f):
-            img_path = spec.img_dir / row["image_file"]
-            img = cv2.imread(str(img_path))
+            p = spec.img_dir / row["image_file"]
+            img = cv2.imread(str(p))
             if img is None:
-                raise FileNotFoundError(f"Missing frame: {img_path}")
+                raise FileNotFoundError(f"Missing frame: {p}")
+            img_paths.append(p)
             frames.append(img)
             present = int(row.get("present", 1))
-            if "vis_x" in row:
-                box = (float(row["vis_x"]), float(row["vis_y"]), float(row["vis_w"]), float(row["vis_h"]))
-            else:
-                box = (float(row["x"]), float(row["y"]), float(row["w"]), float(row["h"]))
-            gt_rows.append({"frame": int(row["frame"]), "present": present, "box": box})
-    return frames, gt_rows
+            vis_box = (
+                (float(row["vis_x"]), float(row["vis_y"]), float(row["vis_w"]), float(row["vis_h"]))
+                if "vis_x" in row
+                else (float(row["x"]), float(row["y"]), float(row["w"]), float(row["h"]))
+            )
+            amodal_box = (
+                (float(row["amodal_x"]), float(row["amodal_y"]), float(row["amodal_w"]), float(row["amodal_h"]))
+                if "amodal_x" in row
+                else None
+            )
+            dist_box = (
+                (float(row["dist_x"]), float(row["dist_y"]), float(row["dist_w"]), float(row["dist_h"]))
+                if "dist_x" in row
+                else None
+            )
+            gt_rows.append({
+                "frame": int(row["frame"]),
+                "present": present,
+                "box": vis_box,
+                "amodal_box": amodal_box,
+                "dist_box": dist_box,
+            })
+    return img_paths, frames, gt_rows
 
 
-def _run_once(
+def _p95(values: List[float]) -> float:
+    return float(np.percentile(values, 95)) if values else float("nan")
+
+
+def _run_once_algo(
     tracker_name: str,
     frames: List[np.ndarray],
     init_roi: Tuple[int, int, int, int],
-) -> Tuple[str, bool, List[Tuple[bool, Tuple[float, float, float, float]]], float]:
-    """Run one full pass of tracker_name; return (binding, init_ok, predictions, update_ms_per_frame)."""
+) -> Tuple[str, bool, List[Tuple[bool, Tuple[float, float, float, float]]], float, Dict]:
     prefer_legacy = tracker_name in ("BOOSTING", "TLD", "MEDIANFLOW")
     factory, binding = resolve_tracker_factory(tracker_name, prefer_legacy=prefer_legacy)
     if factory is None:
-        return binding, False, [(False, (0.0, 0.0, 0.0, 0.0)) for _ in frames], float("nan")
+        return binding, False, [(False, (0.0, 0.0, 0.0, 0.0)) for _ in frames], float("nan"), {}
 
     tracker = factory()
     init_ok, _ = safe_tracker_init(tracker, frames[0], init_roi)
     if not init_ok:
-        return binding, False, [(False, (0.0, 0.0, 0.0, 0.0)) for _ in frames], float("nan")
+        return binding, False, [(False, (0.0, 0.0, 0.0, 0.0)) for _ in frames], float("nan"), {}
 
     preds: List[Tuple[bool, Tuple[float, float, float, float]]] = [(True, tuple(float(v) for v in init_roi))]
     t0 = time.perf_counter()
@@ -116,35 +172,97 @@ def _run_once(
         ok, box = tracker.update(frame)
         preds.append((bool(ok), tuple(float(v) for v in box)))
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
-    ms_per_frame = elapsed_ms / max(1, len(frames) - 1)
-    return binding, True, preds, ms_per_frame
+    ms_pf = elapsed_ms / max(1, len(frames) - 1)
+    telemetry = {
+        "redetect_calls": getattr(tracker, "redetect_calls", 0),
+        "redetect_ms_total": getattr(tracker, "redetect_ms_total", 0.0),
+        "reinits_count": getattr(tracker, "reinits_count", 0),
+    }
+    return binding, True, preds, ms_pf, telemetry
 
 
-def evaluate_tracker_on_sequence(spec: SequenceSpec, tracker_name: str) -> Tuple[Dict, List[Dict]]:
-    """Evaluate a tracker on one sequence across TIMING_REPEATS runs."""
-    frames, gt_rows = load_sequence(spec)
+def _measure_e2e_ms(
+    tracker_name: str,
+    img_paths: List[Path],
+    init_roi: Tuple[int, int, int, int],
+) -> Tuple[float, float]:
+    """Measure end-to-end ms/frame: imread + update + overlay drawing + VideoWriter MP4."""
+    prefer_legacy = tracker_name in ("BOOSTING", "TLD", "MEDIANFLOW")
+    factory, _ = resolve_tracker_factory(tracker_name, prefer_legacy=prefer_legacy)
+    if factory is None:
+        return float("nan"), float("nan")
+
+    times: List[float] = []
+    e2e_repeats = min(3, TIMING_REPEATS)
+    with tempfile.TemporaryDirectory() as tmp:
+        out_mp4 = Path(tmp) / f"{tracker_name}.mp4"
+        for run_idx in range(WARMUP_RUNS + e2e_repeats):
+            t0 = time.perf_counter()
+            f0 = cv2.imread(str(img_paths[0]))
+            h, w = f0.shape[:2]
+            writer = cv2.VideoWriter(str(out_mp4), cv2.VideoWriter_fourcc(*"mp4v"), 15.0, (w, h))
+            tr = factory()
+            safe_tracker_init(tr, f0, init_roi)
+            cv2.rectangle(f0, (init_roi[0], init_roi[1]), (init_roi[0] + init_roi[2], init_roi[1] + init_roi[3]), (0, 255, 0), 2)
+            writer.write(f0)
+            for p in img_paths[1:]:
+                fr = cv2.imread(str(p))
+                ok, box = tr.update(fr)
+                if ok:
+                    bx, by, bw, bh = (int(round(v)) for v in box)
+                    cv2.rectangle(fr, (bx, by), (bx + bw, by + bh), (0, 255, 0), 2)
+                cv2.putText(fr, tracker_name, (12, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                writer.write(fr)
+            writer.release()
+            dt = (time.perf_counter() - t0) * 1000.0 / len(img_paths)
+            if run_idx >= WARMUP_RUNS:
+                times.append(dt)
+    return statistics.median(times), _p95(times)
+
+
+def evaluate_tracker(
+    spec: SequenceSpec,
+    tracker_name: str,
+    img_paths: List[Path],
+    frames: List[np.ndarray],
+    gt_rows: List[Dict],
+    init_roi_override: Optional[Tuple[int, int, int, int]] = None,
+    measure_e2e: bool = True,
+) -> Tuple[Dict, List[Dict]]:
+    """Run warmup + TIMING_REPEATS passes and compute complete tracking metrics."""
     fh, fw = frames[0].shape[:2]
-    init_roi = tuple(int(round(v)) for v in gt_rows[0]["box"])
+    init_roi = init_roi_override or tuple(int(round(v)) for v in gt_rows[0]["box"])
 
-    run_times: List[float] = []
-    binding = ""
-    init_ok = False
-    preds: List[Tuple[bool, Tuple[float, float, float, float]]] = []
+    # Warmup (discarded)
+    for _ in range(WARMUP_RUNS):
+        _run_once_algo(tracker_name, frames, init_roi)
+
+    algo_times: List[float] = []
+    binding, init_ok, preds, telemetry = "", False, [], {}
     for _ in range(TIMING_REPEATS):
-        binding, init_ok, preds, ms_pf = _run_once(tracker_name, frames, init_roi)
+        binding, init_ok, preds, ms_pf, telemetry = _run_once_algo(tracker_name, frames, init_roi)
         if np.isfinite(ms_pf):
-            run_times.append(ms_pf)
+            algo_times.append(ms_pf)
 
-    median_ms = statistics.median(run_times) if run_times else float("nan")
-    fps = 1000.0 / median_ms if median_ms > 0 and np.isfinite(median_ms) else 0.0
+    algo_med = statistics.median(algo_times) if algo_times else float("nan")
+    algo_p95 = _p95(algo_times)
+    algo_fps = 1000.0 / algo_med if algo_med > 0 and np.isfinite(algo_med) else 0.0
+
+    if measure_e2e and img_paths:
+        e2e_med, e2e_p95 = _measure_e2e_ms(tracker_name, img_paths, init_roi)
+        e2e_fps = 1000.0 / e2e_med if e2e_med > 0 and np.isfinite(e2e_med) else 0.0
+    else:
+        e2e_med, e2e_p95, e2e_fps = float("nan"), float("nan"), 0.0
 
     rows: List[Dict] = []
-    eval_ious: List[float] = []
+    eval_ious_vis: List[float] = []
+    eval_ious_amodal: List[float] = []
     failures = 0
     drift_success_true = 0
     absent_total = 0
     absent_fp = 0
     no_gt_frames = 0
+    distractor_jumps = 0
 
     for idx in range(len(frames)):
         gt = gt_rows[idx]
@@ -154,23 +272,27 @@ def evaluate_tracker_on_sequence(spec: SequenceSpec, tracker_name: str) -> Tuple
 
         raw_ok, box = preds[idx]
         valid_pred = raw_ok and validate_box(box, frames[idx].shape)
-        if gt_present:
-            iou_v = iou(box, gt["box"]) if valid_pred else 0.0
-        else:
-            iou_v = 0.0
+        iou_vis = iou(box, gt["box"]) if (gt_present and valid_pred) else 0.0
+        has_amodal = gt["amodal_box"] is not None and validate_box(gt["amodal_box"], frames[idx].shape)
+        iou_amo = iou(box, gt["amodal_box"]) if (has_amodal and valid_pred) else 0.0
 
-        # Frame 0 is initialization; strictly exclude frame 0 from all evaluation metrics
+        dist_iou = iou(box, gt["dist_box"]) if (gt["dist_box"] is not None and valid_pred) else 0.0
+
         if idx >= 1:
             if gt_present:
-                eval_ious.append(iou_v)
+                eval_ious_vis.append(iou_vis)
                 if not valid_pred:
                     failures += 1
-                elif iou_v < 0.2:
+                elif iou_vis < 0.2:
                     drift_success_true += 1
             elif gt["present"] == 0:
                 absent_total += 1
                 if valid_pred:
                     absent_fp += 1
+            if has_amodal:
+                eval_ious_amodal.append(iou_amo)
+            if valid_pred and dist_iou >= 0.30 and iou_vis < 0.10:
+                distractor_jumps += 1
 
         rows.append({
             "sequence": spec.name,
@@ -180,7 +302,8 @@ def evaluate_tracker_on_sequence(spec: SequenceSpec, tracker_name: str) -> Tuple
             "gt_present": int(gt_present),
             "success": int(raw_ok),
             "valid_pred": int(valid_pred),
-            "iou": round(iou_v, 4),
+            "iou": round(iou_vis, 4),
+            "iou_amodal": round(iou_amo, 4) if has_amodal else "-",
             "box_x": round(box[0], 2),
             "box_y": round(box[1], 2),
             "box_w": round(box[2], 2),
@@ -191,28 +314,16 @@ def evaluate_tracker_on_sequence(spec: SequenceSpec, tracker_name: str) -> Tuple
             "gt_h": round(gt["box"][3], 2),
         })
 
-    # Recovery frames after occlusion: count frames from reappear_frame until 3 consecutive IoU >= 0.5
-    recovery_str = "N/A"
-    if spec.reappear_frame is not None:
-        streak = 0
-        found_at: Optional[int] = None
-        for r in rows:
-            if r["frame"] < spec.reappear_frame:
-                continue
-            if r["gt_present"] == 1 and r["iou"] >= IOU_THRESHOLD:
-                streak += 1
-                if streak >= RECOVERY_CONSECUTIVE:
-                    found_at = r["frame"] - RECOVERY_CONSECUTIVE + 1 - spec.reappear_frame
-                    break
-            else:
-                streak = 0
-        recovery_str = str(found_at) if found_at is not None else "эргэж олоогүй"
+    rec_start, rec_conf, first_ok_f, conf_f = compute_recovery_stats(
+        rows, spec.reappear_frame, IOU_THRESHOLD, RECOVERY_CONSECUTIVE
+    )
 
-    n_eval = len(eval_ious)
-    mean_iou = sum(eval_ious) / n_eval if n_eval else 0.0
-    iou_ge_05_pct = 100.0 * sum(1 for v in eval_ious if v >= IOU_THRESHOLD) / n_eval if n_eval else 0.0
+    n_eval = len(eval_ious_vis)
+    mean_iou = sum(eval_ious_vis) / n_eval if n_eval else 0.0
+    mean_iou_amodal = sum(eval_ious_amodal) / len(eval_ious_amodal) if eval_ious_amodal else float("nan")
+    iou_ge_05_pct = 100.0 * sum(1 for v in eval_ious_vis if v >= IOU_THRESHOLD) / n_eval if n_eval else 0.0
     failure_pct = 100.0 * failures / n_eval if n_eval else 0.0
-    absent_fp_pct = 100.0 * absent_fp / absent_total if absent_total else 0.0
+    absent_fp_pct_str = f"{100.0 * absent_fp / absent_total:.2f}" if absent_total > 0 else "N/A (0 кадр)"
 
     summary = {
         "sequence": spec.name,
@@ -225,82 +336,182 @@ def evaluate_tracker_on_sequence(spec: SequenceSpec, tracker_name: str) -> Tuple
         "binding": binding,
         "init_ok": int(init_ok),
         "mean_iou": round(mean_iou, 4),
+        "mean_iou_amodal": round(mean_iou_amodal, 4) if np.isfinite(mean_iou_amodal) else "-",
         "iou_ge_05_pct": round(iou_ge_05_pct, 2),
         "failure_pct": round(failure_pct, 2),
         "drift_success_true": drift_success_true,
-        "absent_fp_frames": absent_fp,
-        "absent_fp_pct": round(absent_fp_pct, 2),
+        "distractor_jumps": distractor_jumps,
+        "absent_fp_frames": absent_fp if absent_total > 0 else "N/A",
+        "absent_fp_pct": absent_fp_pct_str,
+        "recovery_type": spec.recovery_kind,
         "reappear_frame": spec.reappear_frame if spec.reappear_frame is not None else "-",
-        "recovery_frames": recovery_str,
-        "median_ms": round(median_ms, 3) if np.isfinite(median_ms) else "nan",
-        "fps": round(fps, 2),
+        "recovery_start_frames": str(rec_start) if rec_start is not None else ("N/A" if spec.reappear_frame is None else "эргэж олоогүй"),
+        "recovery_confirmed_frames": str(rec_conf) if rec_conf is not None else ("N/A" if spec.reappear_frame is None else "эргэж олоогүй"),
+        "first_ok_frame": str(first_ok_f) if first_ok_f is not None else "-",
+        "confirmed_frame": str(conf_f) if conf_f is not None else "-",
+        "redetect_calls": telemetry.get("redetect_calls", 0),
+        "redetect_extra_ms": round(telemetry.get("redetect_ms_total", 0.0), 2),
+        "algo_median_ms": round(algo_med, 3) if np.isfinite(algo_med) else "nan",
+        "algo_p95_ms": round(algo_p95, 3) if np.isfinite(algo_p95) else "nan",
+        "algo_fps": round(algo_fps, 2),
+        "e2e_median_ms": round(e2e_med, 3) if np.isfinite(e2e_med) else "-",
+        "e2e_p95_ms": round(e2e_p95, 3) if np.isfinite(e2e_p95) else "-",
+        "e2e_fps": round(e2e_fps, 2) if np.isfinite(e2e_med) else "-",
         "opencv_version": cv2.__version__,
     }
     return summary, rows
+
+
+def _apply_motion_blur(img: np.ndarray, ksize: int = 15) -> np.ndarray:
+    k = np.zeros((ksize, ksize), dtype=np.float32)
+    k[ksize // 2, :] = 1.0 / ksize
+    return cv2.filter2D(img, -1, k)
+
+
+def run_stress_and_roi_sensitivity() -> Tuple[List[Dict], List[Dict]]:
+    """Run single-factor stress tests (stride, blur, darken) and initial ROI perturbations."""
+    stress_rows: List[Dict] = []
+    roi_rows: List[Dict] = []
+    stress_trackers = ["MEDIANFLOW", "KCF", "MIL", "TLD", "CSRT", "CSRT_REDETECT"]
+
+    # 1. Single-factor stress tests on davis_bmx_trees_bike & davis_car_shadow
+    for spec in [CORE_SEQUENCES[2], CORE_SEQUENCES[4]]:
+        if not spec.gt_csv.exists():
+            continue
+        _, frames, gt_rows = load_sequence(spec)
+        variants: List[Tuple[str, List[np.ndarray], List[Dict]]] = [
+            ("baseline_1x", frames, gt_rows),
+            ("stride_2x", frames[::2], gt_rows[::2]),
+            ("stride_3x", frames[::3], gt_rows[::3]),
+            ("blur_gauss_k15", [cv2.GaussianBlur(fr, (15, 15), 0) for fr in frames], gt_rows),
+            ("blur_motion_15", [_apply_motion_blur(fr, 15) for fr in frames], gt_rows),
+            ("darken_05x", [cv2.convertScaleAbs(fr, alpha=0.5, beta=-25) for fr in frames], gt_rows),
+        ]
+        for cond, v_frames, v_gt in variants:
+            v_spec = SequenceSpec(spec.name, spec.gt_csv, spec.img_dir, None, "none", cond)
+            for tr in stress_trackers:
+                summ, _ = evaluate_tracker(v_spec, tr, [], v_frames, v_gt, measure_e2e=False)
+                stress_rows.append({
+                    "sequence": spec.name,
+                    "condition": cond,
+                    "tracker": tr,
+                    "eval_frames": summ["eval_frames"],
+                    "mean_iou": summ["mean_iou"],
+                    "iou_ge_05_pct": summ["iou_ge_05_pct"],
+                    "failure_pct": summ["failure_pct"],
+                })
+
+    # 2. Initial ROI perturbation sensitivity on ctrl_bicycle_occ and davis_bmx_trees_bike
+    for spec in [CORE_SEQUENCES[0], CORE_SEQUENCES[2]]:
+        if not spec.gt_csv.exists():
+            continue
+        _, frames, gt_rows = load_sequence(spec)
+        fh, fw = frames[0].shape[:2]
+        x0, y0, w0, h0 = (float(v) for v in gt_rows[0]["box"])
+        perturbations = [
+            ("exact_roi", (int(round(x0)), int(round(y0)), int(round(w0)), int(round(h0)))),
+            ("shift_10pct", (min(fw - 8, int(round(x0 + 0.1 * w0))), min(fh - 8, int(round(y0 + 0.1 * h0))), int(round(w0)), int(round(h0)))),
+            ("scale_plus_10pct", (max(0, int(round(x0 - 0.05 * w0))), max(0, int(round(y0 - 0.05 * h0))), int(round(w0 * 1.1)), int(round(h0 * 1.1)))),
+            ("scale_minus_10pct", (int(round(x0 + 0.05 * w0)), int(round(y0 + 0.05 * h0)), max(8, int(round(w0 * 0.9))), max(8, int(round(h0 * 0.9))))),
+        ]
+        base_ious: Dict[str, float] = {}
+        for pname, proi in perturbations:
+            for tr in stress_trackers:
+                summ, _ = evaluate_tracker(spec, tr, [], frames, gt_rows, init_roi_override=proi, measure_e2e=False)
+                miou = float(summ["mean_iou"])
+                if pname == "exact_roi":
+                    base_ious[tr] = miou
+                roi_rows.append({
+                    "sequence": spec.name,
+                    "perturbation": pname,
+                    "tracker": tr,
+                    "mean_iou": miou,
+                    "delta_iou": round(miou - base_ious[tr], 4),
+                    "iou_ge_05_pct": summ["iou_ge_05_pct"],
+                })
+    return stress_rows, roi_rows
+
+
+def _write_csv(path: Path, rows: List[Dict]) -> None:
+    if not rows:
+        return
+    with open(path, "w", newline="") as f:
+        wr = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
+        wr.writeheader()
+        wr.writerows(rows)
 
 
 def main() -> None:
     enforce_single_thread()
     ensure_dirs()
 
-    summaries: List[Dict] = []
+    core_summaries: List[Dict] = []
     failure_examples: List[Dict] = []
 
-    for spec in SEQUENCES:
+    print("=== 1. Core Suite (5 evaluation cases across 4 sequences x 8 trackers) ===")
+    for spec in CORE_SEQUENCES:
         if not spec.gt_csv.exists():
-            print(f"[SKIP] Missing GT: {spec.gt_csv}")
             continue
-        print(f"=== Benchmarking tracking on {spec.name} ===")
-        for tracker_name in ALL_TRACKERS:
-            summary, rows = evaluate_tracker_on_sequence(spec, tracker_name)
-            summaries.append(summary)
+        img_paths, frames, gt_rows = load_sequence(spec)
+        print(f"--- {spec.name} ---")
+        for tr in ALL_TRACKERS:
+            summ, rows = evaluate_tracker(spec, tr, img_paths, frames, gt_rows, measure_e2e=True)
+            core_summaries.append(summ)
+            _write_csv(CSV_DIR / f"track_{spec.name}_{tr}.csv", rows)
 
-            per_csv = CSV_DIR / f"track_{spec.name}_{tracker_name}.csv"
-            with open(per_csv, "w", newline="") as f:
-                wr = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-                wr.writeheader()
-                wr.writerows(rows)
-
-            # Collect concrete failure / success=True drift examples
-            drift_rows = [r for r in rows if r["frame"] >= 1 and r["gt_present"] == 1 and r["valid_pred"] == 1 and r["iou"] < 0.2]
+            drift_rows = [r for r in rows if r["frame"] >= 1 and r["gt_present"] == 1 and r["valid_pred"] == 1 and float(r["iou"]) < 0.2]
             if drift_rows:
-                first_drift = drift_rows[0]
-                worst_drift = min(drift_rows, key=lambda r: r["iou"])
+                first_d, worst_d = drift_rows[0], min(drift_rows, key=lambda r: float(r["iou"]))
                 failure_examples.append({
                     "sequence": spec.name,
-                    "tracker": tracker_name,
+                    "tracker": tr,
                     "failure_type": "success=True_drift",
-                    "first_frame": first_drift["frame"],
-                    "first_iou": first_drift["iou"],
-                    "worst_frame": worst_drift["frame"],
-                    "worst_iou": worst_drift["iou"],
+                    "first_frame": first_d["frame"],
+                    "first_iou": first_d["iou"],
+                    "worst_frame": worst_d["frame"],
+                    "worst_iou": worst_d["iou"],
                     "drift_count": len(drift_rows),
                 })
-
             print(
-                f"  {tracker_name:10s} | meanIoU={summary['mean_iou']:.4f} "
-                f"| IoU>=0.5={summary['iou_ge_05_pct']:6.2f}% "
-                f"| fail={summary['failure_pct']:5.2f}% "
-                f"| drift(T)={summary['drift_success_true']:2d} "
-                f"| rec={summary['recovery_frames']:>13s} "
-                f"| {summary['median_ms']:6.3f} ms ({summary['fps']:7.2f} FPS)"
+                f"  {tr:13s} | IoU={summ['mean_iou']:.4f} | >=0.5={summ['iou_ge_05_pct']:6.2f}% "
+                f"| rec={summ['recovery_start_frames']}/{summ['recovery_confirmed_frames']} "
+                f"| algo={summ['algo_median_ms']:6.2f}ms (p95={summ['algo_p95_ms']}) | e2e={summ['e2e_median_ms']}ms"
             )
 
-    summary_csv = CSV_DIR / "track_summary.csv"
-    with open(summary_csv, "w", newline="") as f:
-        wr = csv.DictWriter(f, fieldnames=list(summaries[0].keys()))
-        wr.writeheader()
-        wr.writerows(summaries)
+    _write_csv(CSV_DIR / "track_summary.csv", core_summaries)
+    _write_csv(CSV_DIR / "track_failures.csv", failure_examples)
 
-    fail_csv = CSV_DIR / "track_failures.csv"
-    if failure_examples:
-        with open(fail_csv, "w", newline="") as f:
-            wr = csv.DictWriter(f, fieldnames=list(failure_examples[0].keys()))
-            wr.writeheader()
-            wr.writerows(failure_examples)
+    print("\n=== 2. Occlusion Ladder (3f, 10f, 20f, 10f+distractor) ===")
+    ladder_summaries: List[Dict] = []
+    for spec in LADDER_SEQUENCES:
+        if not spec.gt_csv.exists():
+            continue
+        img_paths, frames, gt_rows = load_sequence(spec)
+        for tr in ALL_TRACKERS:
+            summ, rows = evaluate_tracker(spec, tr, img_paths, frames, gt_rows, measure_e2e=False)
+            ladder_summaries.append(summ)
+            _write_csv(CSV_DIR / f"track_{spec.name}_{tr}.csv", rows)
+        print(f"  {spec.name}: CSRT={ladder_summaries[-2]['mean_iou']}, CSRT_REDETECT={ladder_summaries[-1]['mean_iou']} (rec={ladder_summaries[-1]['recovery_start_frames']}/{ladder_summaries[-1]['recovery_confirmed_frames']}, jumps={ladder_summaries[-1]['distractor_jumps']}), TLD={ladder_summaries[-4]['mean_iou']} (jumps={ladder_summaries[-4]['distractor_jumps']})")
+    _write_csv(CSV_DIR / "track_occlusion_ladder.csv", ladder_summaries)
 
-    print("Saved tracking summary:", summary_csv)
-    print("Saved failure examples:", fail_csv)
+    print("\n=== 3. Stress Tests & ROI Perturbation Sensitivity ===")
+    stress_rows, roi_rows = run_stress_and_roi_sensitivity()
+    _write_csv(CSV_DIR / "track_stress_tests.csv", stress_rows)
+    _write_csv(CSV_DIR / "track_roi_sensitivity.csv", roi_rows)
+    print(f"  Saved {len(stress_rows)} stress rows and {len(roi_rows)} ROI sensitivity rows.")
+
+    print("\n=== 4. Held-out Generalization (LaSOT bicycle-11 120f & DAVIS scooter-black 43f) ===")
+    lasot_summaries: List[Dict] = []
+    for spec in LASOT_SEQUENCES:
+        if not spec.gt_csv.exists():
+            continue
+        img_paths, frames, gt_rows = load_sequence(spec)
+        for tr in ALL_TRACKERS:
+            summ, rows = evaluate_tracker(spec, tr, img_paths, frames, gt_rows, measure_e2e=True)
+            lasot_summaries.append(summ)
+            _write_csv(CSV_DIR / f"track_{spec.name}_{tr}.csv", rows)
+            print(f"  {tr:13s} | IoU={summ['mean_iou']:.4f} | >=0.5={summ['iou_ge_05_pct']:6.2f}% | algo={summ['algo_median_ms']:6.2f}ms")
+    _write_csv(CSV_DIR / "track_generalization_lasot.csv", lasot_summaries)
 
 
 if __name__ == "__main__":

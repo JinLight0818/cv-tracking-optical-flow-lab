@@ -9,7 +9,10 @@ secrets/
 # Unrelated workspace artifacts & unauthorized course PDFs
 *.pdf
 05-*
+screenshot*
 Screenshot*
+image-stitching/
+TDB_Image_Stitching_Report_MN.docx
 detection-plate-blur/
 manifest.py
 synthetic_seq.py

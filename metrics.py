@@ -5,8 +5,9 @@ from __future__ import annotations
 import math
 import struct
 from pathlib import Path
-from typing import Iterable, Optional, Sequence, Tuple
+from typing import Dict, Iterable, Optional, Sequence, Tuple
 
+import cv2
 import numpy as np
 
 Box = Tuple[float, float, float, float]
@@ -66,8 +67,103 @@ def epe_map(pred_flow: np.ndarray, gt_flow: np.ndarray, valid_mask: np.ndarray) 
     return float(dist.mean()), count
 
 
+def compute_flow_regions(img_bgr: np.ndarray, gt_flow: np.ndarray, gt_valid: np.ndarray) -> Dict[str, np.ndarray]:
+    """Partition valid pixels into spatial/texture/object-motion regions for EPE analysis."""
+    h, w = gt_valid.shape[:2]
+    gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY).astype(np.float32)
+    gx = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
+    gy = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
+    grad_mag = np.hypot(gx, gy)
+
+    border = np.zeros((h, w), dtype=bool)
+    b = min(24, h // 8, w // 8)
+    border[:b, :] = True
+    border[-b:, :] = True
+    border[:, :b] = True
+    border[:, -b:] = True
+    border_valid = gt_valid & border
+    interior_valid = gt_valid & (~border)
+
+    if interior_valid.any():
+        med_grad = float(np.median(grad_mag[interior_valid]))
+    else:
+        med_grad = 0.0
+    low_tex = interior_valid & (grad_mag <= med_grad)
+    high_tex = interior_valid & (grad_mag > med_grad)
+
+    # Motion discontinuity / object boundary detection via flow gradient magnitude
+    fu = np.where(gt_valid, gt_flow[..., 0], 0.0)
+    fv = np.where(gt_valid, gt_flow[..., 1], 0.0)
+    fgrad = np.hypot(cv2.Sobel(fu, cv2.CV_32F, 1, 0, ksize=3), cv2.Sobel(fu, cv2.CV_32F, 0, 1, ksize=3))
+    fgrad += np.hypot(cv2.Sobel(fv, cv2.CV_32F, 1, 0, ksize=3), cv2.Sobel(fv, cv2.CV_32F, 0, 1, ksize=3))
+    boundary_raw = (fgrad > 1.2) | (~gt_valid)
+    kernel = np.ones((11, 11), dtype=np.uint8)
+    boundary_band = cv2.dilate(boundary_raw.astype(np.uint8), kernel).astype(bool) & gt_valid
+
+    flow_mag = np.hypot(fu, fv)
+    # Identify foreground moving region when flow has both static/slow and fast pixels
+    if gt_valid.any():
+        p20 = float(np.percentile(flow_mag[gt_valid], 20))
+        p90 = float(np.percentile(flow_mag[gt_valid], 90))
+        if p90 - p20 > 1.0:
+            thresh = p20 + 0.4 * (p90 - p20)
+            inside_obj = gt_valid & (~boundary_band) & (flow_mag >= thresh)
+            background = gt_valid & (~boundary_band) & (flow_mag < thresh)
+        else:
+            inside_obj = np.zeros((h, w), dtype=bool)
+            background = gt_valid & (~boundary_band)
+    else:
+        inside_obj = np.zeros((h, w), dtype=bool)
+        background = np.zeros((h, w), dtype=bool)
+
+    return {
+        "all_valid": gt_valid,
+        "border_band": border_valid,
+        "low_texture": low_tex,
+        "high_texture": high_tex,
+        "object_boundary": boundary_band,
+        "inside_object": inside_obj,
+        "background": background,
+    }
+
+
+def compute_recovery_stats(
+    rows: Sequence[Dict],
+    reappear_frame: Optional[int],
+    iou_threshold: float = 0.5,
+    consecutive: int = 3,
+) -> Tuple[Optional[int], Optional[int], Optional[int], Optional[int]]:
+    """Compute (start_offset, confirmed_offset, first_ok_frame, confirmed_frame) after reappear_frame.
+
+    start_offset = first frame of the 3-consecutive IoU>=0.5 streak minus reappear_frame.
+    confirmed_offset = 3rd frame of that streak minus reappear_frame.
+    Returns (None, None, None, None) if not recovered within clip or reappear_frame is None.
+    """
+    if reappear_frame is None:
+        return None, None, None, None
+    streak = 0
+    for r in rows:
+        fi = int(r["frame"])
+        if fi < reappear_frame:
+            continue
+        if int(r["gt_present"]) == 1 and float(r["iou"]) >= iou_threshold:
+            streak += 1
+            if streak >= consecutive:
+                confirmed_frame = fi
+                first_ok_frame = fi - consecutive + 1
+                return (
+                    first_ok_frame - reappear_frame,
+                    confirmed_frame - reappear_frame,
+                    first_ok_frame,
+                    confirmed_frame,
+                )
+        else:
+            streak = 0
+    return None, None, None, None
+
+
 def read_flo(path: Path) -> Tuple[np.ndarray, np.ndarray]:
-    """Read a Middlebury .flo file and return (flow_hw2, valid_mask_hw)."""
+    """Read a Middlebury/Sintel .flo file and return (flow_hw2, valid_mask_hw)."""
     with open(path, "rb") as f:
         tag, = struct.unpack("<f", f.read(4))
         if abs(tag - 202021.25) > 1e-3:

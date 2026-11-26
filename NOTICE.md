@@ -21,12 +21,20 @@ Raw third-party datasets and course PDFs are **excluded** from this repository (
    - SHA-256: `51c4b3bd6f41eb23c3b4153a019e4b73f25a0cbc013ee535de51aa030bb26266`
    - Published derived demos (`results/figures/*_cc0.png`, `results/figures/demo_bicycle_occlusion.mp4`) derive solely from this CC0 asset and matplotlib plots.
 
-2. **DAVIS 2017 (`bmx-trees`, `car-shadow`)**
+2. **DAVIS 2017 (`bmx-trees`, `car-shadow`, `scooter-black`)**
    - URL: `https://davischallenge.org/davis2017/code.html`
    - License: **Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)**
    - Citation: Pont-Tuset et al., *The 2017 DAVIS Challenge on Video Object Segmentation*, arXiv:1704.00675, 2017; Perazzi et al., CVPR 2016.
-   - Note: `Tracking_Lab_Report_MN.docx` embeds a non-commercial failure-analysis figure (`Figure 5`) from `bmx-trees` under CC BY-NC 4.0 with attribution. Do not use for commercial purposes.
+   - Note: `Tracking_Lab_Report_MN.docx` embeds non-commercial failure-analysis figures from `bmx-trees` under CC BY-NC 4.0 with attribution. Do not use for commercial purposes.
 
 3. **Middlebury Optical Flow Evaluation (`RubberWhale`, `Grove2`)**
    - URL: `https://vision.middlebury.edu/flow/data/`
    - Terms: Research and evaluation dataset (Baker et al., *A Database and Evaluation Methodology for Optical Flow*, IJCV 2011). Raw images and `.flo` files are excluded from GitHub.
+
+4. **MPI Sintel Flow Dataset (`training/clean/alley_1`, `training/final/ambush_5`)**
+   - URL: `https://sintel.is.tue.mpg.de/`
+   - Terms: Academic research and evaluation dataset (Butler et al., *A Naturalistic Open Source Movie for Optical Flow Evaluation*, ECCV 2012). Raw images, `.flo`, and occlusion masks are excluded from GitHub.
+
+5. **LaSOT (`bicycle-11`, frames 1–120)**
+   - URL: `http://vision.cs.stonybrook.edu/~lasot/` (mirror used: `https://huggingface.co/datasets/l-lt/LaSOT`)
+   - Terms: Academic research dataset (Fan et al., *LaSOT: A High-Quality Benchmark for Large-Scale Single Object Tracking*, CVPR 2019). Raw video frames and ground-truth files are excluded from GitHub.
