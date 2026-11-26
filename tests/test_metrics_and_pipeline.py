@@ -182,6 +182,25 @@ class MetricsAndPipelineTests(unittest.TestCase):
             self.assertTrue(gif_path.exists())
             self.assertLess(gif_path.stat().st_size, 5_500_000)
 
+        sq_path = CSV_DIR / "squirrel_occlusion_summary.csv"
+        if sq_path.exists():
+            with open(sq_path, newline="") as f:
+                sq_rows = {r["tracker"]: r for r in csv.DictReader(f)}
+            self.assertEqual(len(sq_rows), 8)
+            self.assertEqual(sq_rows["KCF"]["absent_frames"], "9")
+            self.assertEqual(sq_rows["KCF"]["absent_fp_frames"], "0")
+            self.assertEqual(sq_rows["TLD"]["reappear_frame"], "37")
+            self.assertEqual(sq_rows["TLD"]["first_ok_frame"], "49")
+            self.assertEqual(sq_rows["TLD"]["confirmed_frame"], "51")
+            fig_dir = CSV_DIR.parent / "figures" / "custom_videos"
+            sq_gif = fig_dir / "squirrel_occlusion.gif"
+            sq_kf = fig_dir / "squirrel_occlusion_keyframes.png"
+            gf_fig = fig_dir / "summary_good_vs_fail.png"
+            self.assertTrue(sq_gif.exists())
+            self.assertTrue(sq_kf.exists())
+            self.assertTrue(gf_fig.exists())
+            self.assertLess(sq_gif.stat().st_size, 2_000_000)
+
 
 if __name__ == "__main__":
     unittest.main()

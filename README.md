@@ -4,7 +4,7 @@
 
 ![Галт тэрэг ойртоход хоёр tracker хүрээний хэмжээг хэрхэн дагаж байгааг харьцуулсан бодит камерын туршилт](results/figures/custom_videos/tracking_demo.gif)
 
-*Зураг 1. Бодит камерын `CC0 1.0` клип ([Léman Express, Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Arriv%C3%A9e_en_gare_du_L%C3%A9man_Express_pour_Coppet_(2019-12-16).webm), зохиогч `Thibaut120094`, `orig #110–#260` буюу `0.00–5.00 сек`, бодит 1.0× хурдтай, `10 FPS`, 684 px). Зүүн талд гараар шошголсон **GT** (тасархай цагаан), баруун талд ижил кадр дээр **KCF** (`+` улбар шар, тогтмол хэмжээтэй, `Mean IoU = 0.4400`, `IoU 1.00 → 0.17`) ба **CSRT** (`[ ]` ногоон, хэмжээ тэлдэг, `Mean IoU = 0.7767`, бүх `150` кадрт `≥ 0.50`) хэрхэн зөрөхийг харуулав. [Хөдөлгөөнгүй гол кадр](results/figures/custom_videos/tracking_demo_keyframes.png) | [Энэ клипийн 8 аргын CSV](results/csv/phone_commons_leman_express_summary.csv) | [Хяналттай бүрэн халхлалтын CC0 демо MP4](results/figures/demo_bicycle_occlusion.mp4).*
+*Зураг 1. Бодит камерын `CC0 1.0` клип ([Léman Express, Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Arriv%C3%A9e_en_gare_du_L%C3%A9man_Express_pour_Coppet_(2019-12-16).webm), зохиогч `Thibaut120094`, `orig #110–#260` буюу `0.00–5.00 сек`, бодит 1.0× хурдтай, `10 FPS`, 684 px). Зүүн талд гараар шошголсон **GT** (тасархай цагаан), баруун талд ижил кадр дээр **KCF** (`+` улбар шар, тогтмол хэмжээтэй, `Mean IoU = 0.4400`, `IoU 1.00 → 0.17`) ба **CSRT** (`[ ]` ногоон, хэмжээ тэлдэг, `Mean IoU = 0.7767`, бүх `150` кадрт `≥ 0.50`) хэрхэн зөрөхийг харуулав. [Хөдөлгөөнгүй гол кадр](results/figures/custom_videos/tracking_demo_keyframes.png) | [Энэ клипийн 8 аргын CSV](results/csv/phone_commons_leman_express_summary.csv) | [Хэрмийн бүрэн халхлалтын CC0 демо GIF](results/figures/custom_videos/squirrel_occlusion.gif).*
 
 Энэ тайланд **IoU** гэдэг нь *хоёр хүрээ хэр давхцаж байгааг хэмждэг `0–1` оноо* (`0.50`-иас дээш бол амжилттай дагасан гэж үзнэ). Доорх жижиг хүснэгтэд гурван үндсэн видео туршилтын тус бүрийн нэг гол үр дүнг нэгтгэв ([дэлгэрэнгүй CSV](results/csv/phone_videos_summary.csv)):
 
@@ -47,19 +47,41 @@
 
 Босоо линз хавтан нь улаан алимыг бүдгэрүүлэн хэвтээ сунгадаг боловч бүрэн нуудаггүй тул **`occlusion` тайрдсын (`orig #42–#235`, `194` кадр) бүх кадрт алим харагдсан (`absent_frames = 0`)**. Шилний цаана алим сунаж харагдсан ч **`CSRT` (`0.6225`) болон `CSRT_REDETECT` (`0.6225`) нь `193` үнэлгээний кадр бүрд (`100%`) `0.5` босгыг давж тасралтгүй дагасан**. Харин тогтмол авсаархан хүрээтэй **`KCF` хамгийн өндөр дундаж `IoU = 0.7190` (`98.96% ≥ 0.5`)** авсан бол `TLD` (`5.18% ≥ 0.5`) болон `MEDIANFLOW` (`fail = 18.13%`) шилний зураасанд төөрч шилний дараа эргэж олоогүй ([phone_occlusion_summary.csv](results/csv/phone_occlusion_summary.csv)).
 
-- **Бүрэн `0%` халхлалтаас тусад нь ялгах нь:** `occlusion` бичлэг нь тунгалаг хугаралт (`absent_frames = 0`) тул `CSRT` огт тасраагүй (`redetect_calls = 0`). Харин объект **`0%` харагдахаар бүрэн далд ордог хяналттай дугуйн туршилт (`ctrl_bicycle_occ`, 5 кадр алга болох)** дээр энгийн `CSRT` эргэж олохгүй унадаг бол дахин хайгчтай **`CSRT_REDETECT`** (`Mean IoU = 0.3402 → 0.5861`) `4–6` кадрт амжилттай сэргэсэн ([track_summary.csv](results/csv/track_summary.csv)).
+- **Бүрэн `0%` халхлалтаас тусад нь ялгах нь:** `occlusion` бичлэг нь тунгалаг хугаралт (`absent_frames = 0`) тул `CSRT` огт тасраагүй (`redetect_calls = 0`). Объект **`0%` харагдахаар бүрэн далд ороод нөгөө талаас гарч ирэх** үед хэрхэн ажилладгийг доорх 4-р хэсэгт хэмжлээ.
 
 ![Алим ба шилний кадр бүрийн IoU цагийн шугам](results/figures/custom_videos/occlusion_iou_timeline.png)
 *Зураг 5. `occlusion` бичлэгийн `193` үнэлгээний кадр бүрийн IoU. `KCF` өндөр дундажтай (`0.7190`), `CSRT` кадр бүрд тасралтгүй `≥ 0.50` байсан бол `MIL` `31` кадр хоцорч, `TLD`/`MEDIANFLOW` сэргээгүй.*
 
 ---
 
+## 4. Бүрэн 0% халхлалт: хэрэм модны их биеийн цаагуур орж гарч ирэх нь
+
+Wikimedia Commons-ийн нээлттэй лицензтэй бодит хэрэм бичлэгүүдийг (жишээ нь `Morton Arboretum Winter Squirrel 2005.webm`, `Squirrels running up the wall.webm` зэрэг 9 видео) шалгахад нэг камерын тасралтгүй дүрсэд хэрэм модны их биеийн цаагуур `0%` бүрэн далд ороод нөгөө талд цэвэр гарч ирэх хэсэг байхгүй байсан тул хоёр **`CC0 1.0`** бодит гэрэл зургаар (**бодит фото ашигласан хяналттай дараалал**: хэрэм `Squirrel_eating_nut_in_grass.png` — `TylerMascola`, модны их бие ба цэцэрлэгийн дэвсгэр `Squirrel_on_tree_trunk.jpg` — `Ilikecheese`) **`squirrel_occlusion`** (`720×420`, `66` кадр, `12 FPS` = `5.50 сек`) дарааллыг бэлдэж туршлаа ([squirrel_occlusion_lab.py](squirrel_occlusion_lab.py)). Кадруудад `#28–#36` хооронд **`9` кадр дараалан хэрэм модны их биеийн цаана `0%` бүрэн далд орж**, `#37` (`reappear_frame = 37`) дээр хошуу нь их биеийн баруун талаас цухуйж эхэлнэ (`#1–#27` + `#37–#65` = `56` үнэлгээний кадр).
+
+![Хэрэм модны их биеийн цаагуур орж гарч ирэх бүрэн халхлалт (KCF vs TLD)](results/figures/custom_videos/squirrel_occlusion.gif)
+*Зураг 6. `squirrel_occlusion` (`бодит фото ашигласан хяналттай дараалал`, `#0–#65` бүх `66` кадр, `12 FPS`, `5.50 сек`). Зүүн талд **`KCF`** их бие рүү ороход (`#23`) шууд **`Алдсан`** төлөвт орж `9` далд кадрт **`0/9` (`0.00%`) хуурамч хүрээ** гаргаагүй ч баруун талд эргэж олоогүй (`Mean IoU = 0.3043`). Баруун талд **`TLD`** нь далд `#28–#36` кадрт холтос орчимд хуурамч хүрээ барьсан (`9/9`) боловч нөгөө талаас гарч ирсний дараа **`#49` (`+12` кадр, `IoU = 0.753`)** дээр олж, **`#51` (`+14` кадр)** дээр дараалсан `3` кадраар баталгаажин (`0.75 → 0.81 → 0.77`) төгсгөл хүртэл дагасан (`Mean IoU = 0.5131`, `66.07% ≥ 0.50`).*
+
+![Харагдаж байна, бүрэн далд 0%, буцаж гарсан 3 кадрын харьцуулалт](results/figures/custom_videos/squirrel_occlusion_keyframes.png)
+*Зураг 7. Түлхүүр `3` кадр: харагдах (`#15`), бүрэн далд `0%` (`#32`), буцаж гараад батлагдсан (`#51`). **`CSRT`** ба **`CSRT_REDETECT`** (`Mean IoU = 0.3533`) хоёр хэрэм орох үед хүрэн саарал холтосны ирмэг дээр (`x ≈ 247`) гацаж үлдсэн; холтосны өнгөний гистограмм хэрмийн үстэй ойр тул `CSRT_REDETECT`-ийн дүрсний оноо (`0.225–0.234`) сул `0.22` босгыг давж **`redetect_calls = 0`** болжээ ([squirrel_occlusion_summary.csv](results/csv/squirrel_occlusion_summary.csv)).*
+
+| Алгоритм | Mean IoU | IoU ≥ 0.50 | Failure % | Далд кадрын FP (`9` кадр) | Сэргэлт (`first/confirmed`) | Algo FPS |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`TLD`** | **0.5131** | **66.07%** | 0.00% | 9 / 9 (`100%`) | **`12 / 14` (`#49 / #51`)** | 49.15 |
+| `MEDIANFLOW` | 0.3672 | 37.50% | 0.00% | 9 / 9 (`100%`) | Эргэж олоогүй | **1259.15** |
+| `MIL` | 0.3543 | 35.71% | 0.00% | 9 / 9 (`100%`) | Эргэж олоогүй | 52.40 |
+| `CSRT` / `CSRT_REDETECT` | 0.3533 | 35.71% | 0.00% | 9 / 9 (`100%`), `redet=0` | Эргэж олоогүй | 54.03 / 53.10 |
+| `BOOSTING` | 0.3415 | 35.71% | 0.00% | 9 / 9 (`100%`) | Эргэж олоогүй | 46.65 |
+| **`KCF`** | 0.3043 | 35.71% | 60.71% | **`0 / 9` (`0.00%`)** | Эргэж олоогүй | 827.39 |
+| `STATIC` *(суурь)* | 0.0862 | 7.14% | 0.00% | 9 / 9 (`100%`) | Эргэж олоогүй | *(хассан)* |
+
+---
+
 ## Дүгнэлт
 
 ![Амжилттай болон бүтэлгүйтлийн бодит жишээнүүд](results/figures/custom_videos/summary_good_vs_fail.png)
-*Зураг 6. Зүүн талд (`CC0 Léman Express #260`): хэмжээ нь тэлдэг `CSRT` (`0.83`) ойртож буй галт тэргийг бүтэн барьсан бол тогтмол хэмжээтэй `KCF` (`0.17`) жижиг хэвээр хоцорсон. Баруун талд (`CC0` хяналттай дугуйн бүрэн халхлалт `#31`): энгийн `CSRT` бүрэн далд орсны дараа сэргээгүй бол **`CSRT_REDETECT`** эргэн олсон.*
+*Зураг 8. Зүүн талд (`CC0 Léman Express #260`): хэмжээ нь тэлдэг `CSRT` (`0.83`) ойртож буй галт тэргийг бүтэн барьсан бол тогтмол хэмжээтэй `KCF` (`0.17`) жижиг хэвээр хоцорсон. Баруун талд (`CC0` хэрмийн бүрэн халхлалт `#51`, `+14` кадр): модны их биеийн цаанаас гарч ирэхэд **`TLD` (`0.77`)** цорын ганц сэргэсэн бол **`CSRT` ба `CSRT_REDETECT` (`0.00`)** хүрэн холтос дээр гацаж, **`KCF`** нь `0/9` хуурамч хүрээгүйгээр **`Алдсан`** хэвээр үлдсэн.*
 
-Нэг дагагч бүх нөхцөлд тэргүүлдэггүй: биет цэвэр харагдаж томрох үед `CSRT` ба `MEDIANFLOW` хамгийн зөв хэмжээ барьдаг бол, тунгалаг хугарлын үед `KCF` өндөр дундаж IoU (`0.7190`), `CSRT` хамгийн тогтвортой тасралтгүй дагалт (`100%`) үзүүлдэг. Харин хурдан камерт дэвсгэр урсах эсвэл биет бүрэн халхлагдах үед зөвхөн локал хөдөлгөөн эсвэл хэмжээ тогтмол шүүлтүүрт найдах нь хангалтгүй тул `CSRT_REDETECT` шиг дахин илрүүлэх шатлал шаардлагатай.
+Нэг дагагч бүх нөхцөлд тэргүүлдэггүй: биет цэвэр харагдаж томрох үед `CSRT` ба `MEDIANFLOW` хамгийн зөв хэмжээ барьдаг бол, тунгалаг хугарлын үед `KCF` өндөр дундаж IoU (`0.7190`), `CSRT` хамгийн тогтвортой тасралтгүй дагалт (`100%`) үзүүлдэг. Харин биет өнгө-бүтэц төстэй модны их биеийн цаана `0%` бүрэн халхлагдах үед дан корреляцийн шүүлтүүр (`KCF`) хуурамч хүрээ гаргадаггүй ч дахин олж чадахгүй, хэт сул appearance босготой дахин хайгч (`CSRT_REDETECT`, `0.22`) холтосны өнгөнд хууртаж сэргэх горимд шилжихгүй гацаж болох бөгөөд `TLD` шиг байнгын бүтэн-дүрсийн детектор дахин олж чаддаг (хэдийгээр далд кадрт хуурамч хүрээ хадгалдаг дутагдалтай ч).
 
 ---
 
@@ -116,7 +138,7 @@
 
 ### Төслийн бүтэц, орчин ба ажиллуулах заавар
 - **Орчин:** Linux (`x86_64`), Intel(R) Core(TM) 5 120U (`1 thread`), Python `3.14.4`, `opencv-contrib-python==4.14.0.94`, `ffmpeg 8.0.1`.
-- **Код & өгөгдлийн скриптүүд:** [config.py](config.py), [metrics.py](metrics.py), [trackers.py](trackers.py), [dataset_prep.py](dataset_prep.py), [reproduce_pdf.py](reproduce_pdf.py), [benchmark_track.py](benchmark_track.py), [benchmark_flow.py](benchmark_flow.py), [custom_video_lab.py](custom_video_lab.py), [make_figure.py](make_figure.py), [make_three_videos_figures.py](make_three_videos_figures.py), [tests/test_metrics_and_pipeline.py](tests/test_metrics_and_pipeline.py).
+- **Код & өгөгдлийн скриптүүд:** [config.py](config.py), [metrics.py](metrics.py), [trackers.py](trackers.py), [dataset_prep.py](dataset_prep.py), [reproduce_pdf.py](reproduce_pdf.py), [benchmark_track.py](benchmark_track.py), [benchmark_flow.py](benchmark_flow.py), [custom_video_lab.py](custom_video_lab.py), [squirrel_occlusion_lab.py](squirrel_occlusion_lab.py), [make_figure.py](make_figure.py), [make_three_videos_figures.py](make_three_videos_figures.py), [tests/test_metrics_and_pipeline.py](tests/test_metrics_and_pipeline.py).
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
@@ -125,6 +147,7 @@ pip install --upgrade pip && pip install -r requirements.txt
 python dataset_prep.py --all
 python benchmark_flow.py && python benchmark_track.py
 python custom_video_lab.py --run-three
+python squirrel_occlusion_lab.py --rebuild-seq
 python custom_video_lab.py --evaluate data/commons/leman_express_cc0.webm \
   --gt results/csv/commons_leman_express_gt.csv --start-frame 110 --end-frame 260 --seq-id commons_leman_express
 python make_figure.py && python make_three_videos_figures.py

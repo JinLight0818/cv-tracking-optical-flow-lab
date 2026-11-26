@@ -290,6 +290,198 @@ def build_cc0_hero_gif_and_keyframes() -> Tuple[Path, Path]:
     return gif_path, kf_path
 
 
+def _load_squirrel_gt_rows() -> Dict[int, Dict[str, str]]:
+    return {int(r["frame"]): r for r in _read_csv_rows(CSV_DIR / "squirrel_occlusion_gt.csv")}
+
+
+def _render_squirrel_split_frame(
+    frame_bgr: np.ndarray,
+    fi: int,
+    fps: float,
+    gt_row: Dict[str, str],
+    kcf_row: Dict[str, str],
+    tld_row: Dict[str, str],
+) -> Image.Image:
+    """Render synchronized 1:1 full-frame side-by-side panels (Left=KCF, Right=TLD)."""
+    ih, iw = frame_bgr.shape[:2]
+    panel_w, panel_h = 340, int(round(340 * ih / iw))  # 340x198
+    sx, sy = panel_w / iw, panel_h / ih
+
+    base_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+    base_panel = Image.fromarray(base_rgb).resize((panel_w, panel_h), Image.Resampling.LANCZOS)
+
+    font_hdr = ImageFont.truetype(FONT_BOLD, 12)
+    font_sub = ImageFont.truetype(FONT_REG, 10)
+    font_badge = ImageFont.truetype(FONT_BOLD, 11)
+
+    pad = 8
+    top_h = 44
+    bot_h = 26
+    canvas_w = pad * 3 + panel_w * 2
+    canvas_h = top_h + panel_h + bot_h
+    canvas = Image.new("RGB", (canvas_w, canvas_h), (255, 255, 255))
+    draw = ImageDraw.Draw(canvas)
+
+    present = int(gt_row["present"]) == 1
+    vis_pct = int(round(float(gt_row["visible_fraction"]) * 100))
+    gx, gy, gw, gh = float(gt_row["vis_x"]), float(gt_row["vis_y"]), float(gt_row["vis_w"]), float(gt_row["vis_h"])
+
+    def draw_gt(d_ctx: ImageDraw.ImageDraw) -> None:
+        if not present:
+            return
+        x1, y1 = gx * sx, gy * sy
+        x2, y2 = x1 + gw * sx, y1 + gh * sy
+        _draw_dashed_rect(d_ctx, x1 + 1, y1 + 1, x2 + 1, y2 + 1, color=(15, 23, 42), width=3, dash=6, gap=4)
+        _draw_dashed_rect(d_ctx, x1, y1, x2, y2, color=(255, 255, 255), width=2, dash=6, gap=4)
+
+    # Left panel: KCF (reports Алдсан cleanly on occlusion -> 0/9 absent FP, never recovers)
+    left_img = base_panel.copy()
+    dl = ImageDraw.Draw(left_img)
+    draw_gt(dl)
+    kcf_ok = int(kcf_row["valid_pred"]) == 1 and int(kcf_row["success"]) == 1
+    if kcf_ok:
+        kx, ky, kw, kh = float(kcf_row["box_x"]), float(kcf_row["box_y"]), float(kcf_row["box_w"]), float(kcf_row["box_h"])
+        x1, y1, x2, y2 = kx * sx, ky * sy, (kx + kw) * sx, (ky + kh) * sy
+        dl.rectangle([int(round(x1)), int(round(y1)), int(round(x2)), int(round(y2))], outline=(249, 115, 22), width=3)
+        lbl = f"KCF {float(kcf_row['iou']):.2f}" if present else "KCF: Далд"
+        _draw_pill(dl, (max(4, int(x1)), max(4, int(y1) - 21)), lbl, (234, 88, 12), (255, 255, 255), font_badge)
+    else:
+        _draw_pill(dl, (8, 8), "KCF: Алдсан", (185, 28, 28), (255, 255, 255), font_badge)
+    if not present:
+        _draw_pill(dl, (8, panel_h - 24), "Бүрэн далд (0%)", (30, 41, 59), (255, 255, 255), font_badge)
+
+    # Right panel: TLD (recovers after trunk at #49, confirmed 3-frame >=0.5 at #51)
+    right_img = base_panel.copy()
+    dr = ImageDraw.Draw(right_img)
+    draw_gt(dr)
+    tld_ok = int(tld_row["valid_pred"]) == 1 and int(tld_row["success"]) == 1
+    tld_iou = float(tld_row["iou"])
+    if tld_ok:
+        tx, ty, tw, th = float(tld_row["box_x"]), float(tld_row["box_y"]), float(tld_row["box_w"]), float(tld_row["box_h"])
+        x1, y1, x2, y2 = tx * sx, ty * sy, (tx + tw) * sx, (ty + th) * sy
+        if present and tld_iou >= 0.5:
+            box_col, pill_bg = (2, 132, 199), (2, 132, 199)
+            tag = f"TLD {tld_iou:.2f} (Сэргэсэн)" if fi >= 49 else f"TLD {tld_iou:.2f}"
+        elif present:
+            box_col, pill_bg = (220, 38, 38), (185, 28, 28)
+            tag = f"TLD {tld_iou:.2f}"
+        else:
+            box_col, pill_bg = (220, 38, 38), (185, 28, 28)
+            tag = "TLD: Хуурамч (0%)"
+        dr.rectangle([int(round(x1)), int(round(y1)), int(round(x2)), int(round(y2))], outline=box_col, width=3)
+        _draw_corner_brackets(dr, x1, y1, x2, y2, (255, 255, 255) if tld_iou >= 0.5 else (254, 202, 202), arm=6, width=2)
+        tw_px = dr.textbbox((0, 0), tag, font=font_badge)[2] + 12
+        px = min(panel_w - tw_px - 4, max(4, int(x1)))
+        py = max(4, int(y1) - 21)
+        _draw_pill(dr, (px, py), tag, pill_bg, (255, 255, 255), font_badge)
+    else:
+        _draw_pill(dr, (8, 8), "TLD: Алдсан", (185, 28, 28), (255, 255, 255), font_badge)
+    if not present:
+        _draw_pill(dr, (8, panel_h - 24), "Бүрэн далд (0%)", (30, 41, 59), (255, 255, 255), font_badge)
+
+    canvas.paste(left_img, (pad, top_h))
+    canvas.paste(right_img, (pad * 2 + panel_w, top_h))
+
+    t_sec = fi / fps
+    state_str = "Бүрэн далд 0%" if not present else (f"Харагдалт {vis_pct}%" if vis_pct < 98 else "Цэвэр харагдаж байна")
+    draw.text((pad, 6), "KCF (улбар шар): далд ороод алдсан", fill=(15, 23, 42), font=font_hdr)
+    draw.text((pad, 24), f"#{fi:02d}/65 ({t_sec:.2f}с)  |  {state_str}  |  FP=0/9", fill=(71, 85, 105), font=font_sub)
+
+    rx = pad * 2 + panel_w
+    draw.text((rx, 6), "TLD (цэнхэр): нөгөө талд эргэж олсон", fill=(15, 23, 42), font=font_hdr)
+    tld_stat = "Хуурамч хүрээ (холтост)" if not present else f"IoU={tld_iou:.2f}" + (" [Батлагдсан #51]" if fi >= 51 else "")
+    draw.text((rx, 24), f"#{fi:02d}/65 ({t_sec:.2f}с)  |  {tld_stat}", fill=(71, 85, 105), font=font_sub)
+
+    draw.line([(pad, top_h + panel_h + 4), (canvas_w - pad, top_h + panel_h + 4)], fill=(226, 232, 240), width=1)
+    draw.text(
+        (pad, top_h + panel_h + 7),
+        "Бодит CC0 фото дараалал:  -- Цагаан = GT   Улбар шар = KCF   Цэнхэр = TLD (#49 олоод #51 батлав)",
+        fill=(51, 65, 85),
+        font=font_sub,
+    )
+    return canvas
+
+
+def build_squirrel_occlusion_gif_and_keyframes() -> Tuple[Path, Path]:
+    """Build squirrel_occlusion.gif (12 FPS, 5.50s loop) and static 3-frame comparison PNG."""
+    seq_dir = DATA_DIR / "controlled" / "squirrel_occ_seq"
+    gt = _load_squirrel_gt_rows()
+    kcf = _load_track_rows("squirrel_occlusion", "KCF")
+    csrt = _load_track_rows("squirrel_occlusion", "CSRT")
+    tld = _load_track_rows("squirrel_occlusion", "TLD")
+
+    fps = 12.0
+    gif_path = CUSTOM_FIG_DIR / "squirrel_occlusion.gif"
+    n_frames = len(gt)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp = Path(tmpdir)
+        for fi in range(n_frames):
+            bgr = cv2.imread(str(seq_dir / gt[fi]["image_file"]))
+            img = _render_squirrel_split_frame(bgr, fi, fps, gt[fi], kcf[fi], tld[fi])
+            img.save(tmp / f"f_{fi:04d}.png")
+
+        pal = tmp / "palette.png"
+        subprocess.run(
+            ["ffmpeg", "-y", "-framerate", str(int(fps)), "-i", str(tmp / "f_%04d.png"), "-vf", "palettegen=stats_mode=diff:max_colors=192", str(pal)],
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["ffmpeg", "-y", "-framerate", str(int(fps)), "-i", str(tmp / "f_%04d.png"), "-i", str(pal), "-lavfi", "paletteuse=dither=bayer:bayer_scale=2:diff_mode=rectangle", str(gif_path)],
+            check=True,
+            capture_output=True,
+        )
+
+    # Equal-width 3-frame static strip: visible (#15), completely hidden (#32), reappeared+confirmed (#51)
+    kf_path = CUSTOM_FIG_DIR / "squirrel_occlusion_keyframes.png"
+    fig, axes = plt.subplots(1, 3, figsize=(14.4, 4.15), dpi=160, facecolor="white")
+    panels = [
+        (15, "1. Харагдаж байна (#15, 1.25с)"),
+        (32, "2. Бүрэн далд 0% (#32, 2.67с)"),
+        (51, "3. Буцаж гарсан (#51, +14 кадр)"),
+    ]
+    for ax, (fi, hdr) in zip(axes, panels):
+        rgb = cv2.cvtColor(cv2.imread(str(seq_dir / gt[fi]["image_file"])), cv2.COLOR_BGR2RGB)
+        ax.imshow(rgb)
+        pres = int(gt[fi]["present"]) == 1
+        if pres:
+            gx, gy, gw, gh = float(gt[fi]["vis_x"]), float(gt[fi]["vis_y"]), float(gt[fi]["vis_w"]), float(gt[fi]["vis_h"])
+            ax.add_patch(patches.Rectangle((gx, gy), gw, gh, fill=False, edgecolor="#0f172a", lw=3.0, ls=(0, (5, 4))))
+            ax.add_patch(patches.Rectangle((gx, gy), gw, gh, fill=False, edgecolor="#ffffff", lw=1.8, ls=(0, (5, 4))))
+
+        # KCF, CSRT, TLD boxes (only when valid_pred == 1 and success == 1)
+        for tr, col, lw_v in [("KCF", TRACKER_COLORS_HEX["KCF"], 2.2), ("CSRT", TRACKER_COLORS_HEX["CSRT"], 2.2), ("TLD", TRACKER_COLORS_HEX["CSRT_REDETECT"], 2.5)]:
+            row = {"KCF": kcf, "CSRT": csrt, "TLD": tld}[tr][fi]
+            if int(row["valid_pred"]) == 1 and int(row["success"]) == 1:
+                bx, by, bw, bh = float(row["box_x"]), float(row["box_y"]), float(row["box_w"]), float(row["box_h"])
+                ax.add_patch(patches.Rectangle((bx, by), bw, bh, fill=False, edgecolor=col, lw=lw_v))
+
+        if fi == 15:
+            ax.text(14, 34, f"KCF={float(kcf[fi]['iou']):.2f}  CSRT={float(csrt[fi]['iou']):.2f}  TLD={float(tld[fi]['iou']):.2f}", color="#ffffff", fontsize=8.4, fontweight="bold", bbox=dict(facecolor="#0f172a", alpha=0.86))
+        elif fi == 32:
+            ax.text(14, 34, "KCF: Алдсан (0/9 FP)", color="#ffffff", fontsize=8.4, fontweight="bold", bbox=dict(facecolor="#b91c1c", alpha=0.92))
+            ax.text(14, 70, "CSRT (ногоон), TLD (цэнхэр): Холтост хуурамч", color="#ffffff", fontsize=8.0, fontweight="bold", bbox=dict(facecolor="#475569", alpha=0.90))
+        else:
+            ax.text(14, 34, f"TLD (цэнхэр): IoU={float(tld[fi]['iou']):.2f} (Сэргэсэн)", color="#ffffff", fontsize=8.4, fontweight="bold", bbox=dict(facecolor="#0284c7", alpha=0.94))
+            ax.text(14, 70, f"CSRT (ногоон): {float(csrt[fi]['iou']):.2f} (гацсан) | KCF: Алдсан", color="#ffffff", fontsize=8.0, fontweight="bold", bbox=dict(facecolor="#059669", alpha=0.92))
+
+        ax.set_title(hdr, fontsize=9.6, fontweight="bold", color="#0f172a")
+        ax.axis("off")
+
+    fig.suptitle(
+        "Бодит CC0 фото ашигласан хяналттай дараалал (хэрэм + их бие): -- Цагаан = GT   Улбар шар = KCF   Ногоон = CSRT   Цэнхэр = TLD",
+        fontsize=10.2,
+        fontweight="bold",
+        color="#0f172a",
+        y=0.97,
+    )
+    fig.tight_layout(rect=[0, 0, 1, 0.91])
+    fig.savefig(kf_path, facecolor="white")
+    plt.close(fig)
+    print(f"Saved Squirrel GIF ({gif_path.stat().st_size / 1e6:.2f} MB) & keyframes: {gif_path}, {kf_path}")
+    return gif_path, kf_path
+
+
 def build_stable_scale_figure() -> Path:
     """Clean white lab figure for stable video (scale expansion vs IoU across orig #664-#721)."""
     orig_idx = list(range(664, 722))
@@ -460,20 +652,28 @@ def build_occlusion_timeline_clean() -> Path:
 
 
 def build_good_vs_fail_figure() -> Path:
-    """Clean 1-good vs 1-fail visual comparison using strictly CC0 public-domain frames."""
+    """Clean 1-good vs 1-fail visual comparison using strictly CC0 public-domain sources."""
     # Left: CC0 Léman Express orig #260 (CSRT adapts to growing train vs KCF fixed box)
     frames_l, orig_l, _ = load_video_clip(DATA_DIR / "commons" / "leman_express_cc0.webm", 110, 260, max_frames=300)
     gt_l = load_verified_gt(CSV_DIR / "commons_leman_express_gt.csv", orig_l)
     kcf_l = _load_track_rows("commons_leman_express", "KCF")
     csrt_l = _load_track_rows("commons_leman_express", "CSRT")
 
-    # Right: CC0 controlled bicycle full-occlusion recovery failure of plain CSRT vs CSRT_REDETECT (frame 31)
-    gt_c = {int(r["frame"]): r for r in _read_csv_rows(CSV_DIR / "ctrl_bicycle_occ_gt.csv")}
-    csrt_c = _load_track_rows("ctrl_bicycle_occ", "CSRT")
-    rd_c = _load_track_rows("ctrl_bicycle_occ", "CSRT_REDETECT")
-    im_c = cv2.imread(str(DATA_DIR / "controlled" / "bicycle_occ_seq" / "frame_0031.png"))
+    # Right: CC0 controlled squirrel full-occlusion (#51, +14 frames after reappearance):
+    # TLD recovers cleanly onto the squirrel on the right, whereas CSRT/CSRT_REDETECT froze on brown bark.
+    gt_s = _load_squirrel_gt_rows()
+    csrt_s = _load_track_rows("squirrel_occlusion", "CSRT")
+    tld_s = _load_track_rows("squirrel_occlusion", "TLD")
+    im_s = cv2.imread(str(DATA_DIR / "controlled" / "squirrel_occ_seq" / gt_s[51]["image_file"]))
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.8, 4.8), dpi=160, facecolor="white")
+    fig, axes = plt.subplots(
+        1,
+        2,
+        figsize=(14.2, 5.1),
+        dpi=160,
+        facecolor="white",
+        gridspec_kw={"width_ratios": [590 / 395, 720 / 420]},
+    )
 
     # Panel A: CC0 Léman Express end frame (orig #260)
     cx, cy, cw, ch = 330, 125, 590, 395
@@ -491,38 +691,49 @@ def build_good_vs_fail_figure() -> Path:
     axes[0].set_xticks([])
     axes[0].set_yticks([])
 
-    # Panel B: CC0 controlled 100% occlusion (frame 31 after reappearance)
-    rgb_c = cv2.cvtColor(im_c, cv2.COLOR_BGR2RGB)
-    axes[1].imshow(rgb_c)
-    g31 = gt_c[31]
-    axes[1].add_patch(patches.Rectangle((float(g31["vis_x"]), float(g31["vis_y"])), float(g31["vis_w"]), float(g31["vis_h"]), fill=False, edgecolor="#ffffff", lw=2.0, ls=(0, (5, 4))))
-    r_rd = rd_c[31]
-    if int(r_rd["valid_pred"]):
-        axes[1].add_patch(patches.Rectangle((float(r_rd["box_x"]), float(r_rd["box_y"])), float(r_rd["box_w"]), float(r_rd["box_h"]), fill=False, edgecolor="#0284c7", lw=2.6))
-    axes[1].text(14, 30, f"CSRT_REDETECT: IoU={float(r_rd['iou']):.2f} (Эргэж олсон)", color="#ffffff", fontsize=8.4, fontweight="bold", bbox=dict(facecolor="#0284c7", alpha=0.92))
-    axes[1].text(14, 62, "Энгийн CSRT: Алдсан (0% харагдсаны дараа сэргээгүй)", color="#ffffff", fontsize=8.4, fontweight="bold", bbox=dict(facecolor="#dc2626", alpha=0.92))
-    axes[1].set_title("2. Бүтэлгүйтэл ба зассан шийдэл (CC0 хяналттай халхлалт #31)\nБүрэн далд орсон үед энгийн CSRT алдсан ч дахин илрүүлэгч олсон", fontsize=9.4, fontweight="bold", color="#0f172a")
+    # Panel B: CC0 controlled squirrel 100% trunk occlusion (#51 after reappearance)
+    rgb_s = cv2.cvtColor(im_s, cv2.COLOR_BGR2RGB)
+    axes[1].imshow(rgb_s)
+    g51 = gt_s[51]
+    axes[1].add_patch(patches.Rectangle((float(g51["vis_x"]), float(g51["vis_y"])), float(g51["vis_w"]), float(g51["vis_h"]), fill=False, edgecolor="#ffffff", lw=2.0, ls=(0, (5, 4))))
+    r_tld = tld_s[51]
+    if int(r_tld["valid_pred"]):
+        axes[1].add_patch(patches.Rectangle((float(r_tld["box_x"]), float(r_tld["box_y"])), float(r_tld["box_w"]), float(r_tld["box_h"]), fill=False, edgecolor="#0284c7", lw=2.6))
+    r_csrt = csrt_s[51]
+    if int(r_csrt["valid_pred"]):
+        axes[1].add_patch(patches.Rectangle((float(r_csrt["box_x"]), float(r_csrt["box_y"])), float(r_csrt["box_w"]), float(r_csrt["box_h"]), fill=False, edgecolor="#dc2626", lw=2.2))
+    axes[1].text(14, 30, f"TLD (цэнхэр): IoU={float(r_tld['iou']):.2f} (#49-д олоод #51-д батлав)", color="#ffffff", fontsize=8.2, fontweight="bold", bbox=dict(facecolor="#0284c7", alpha=0.94))
+    axes[1].text(14, 62, f"CSRT & CSRT_REDETECT (улаан): {float(r_csrt['iou']):.2f} (Холтост гацсан) | KCF: Алдсан", color="#ffffff", fontsize=7.8, fontweight="bold", bbox=dict(facecolor="#dc2626", alpha=0.92))
+    axes[1].set_title("2. Бүрэн халхлалтаас эргэж олох (CC0 фото: хэрэм #51)\nМодны их биеийн цаанаас гарч ирэхэд зөвхөн TLD сэргэсэн", fontsize=9.4, fontweight="bold", color="#0f172a")
     axes[1].set_xticks([])
     axes[1].set_yticks([])
 
-    fig.tight_layout()
+    fig.tight_layout(pad=1.0)
     out = CUSTOM_FIG_DIR / "summary_good_vs_fail.png"
-    fig.savefig(out, facecolor="white")
+    fig.savefig(out, bbox_inches="tight", pad_inches=0.12, facecolor="white")
     plt.close(fig)
     return out
 
 
-def build_all() -> None:
+def build_all(only_squirrel: bool = False) -> None:
     ensure_dirs()
     CUSTOM_FIG_DIR.mkdir(parents=True, exist_ok=True)
     CUSTOM_LOCAL_DIR.mkdir(parents=True, exist_ok=True)
+    sg, sk = build_squirrel_occlusion_gif_and_keyframes()
+    f_gf = build_good_vs_fail_figure()
+    if only_squirrel:
+        print("Generated squirrel figures:", [str(p) for p in (sg, sk, f_gf)])
+        return
     gif_p, kf_p = build_cc0_hero_gif_and_keyframes()
     f_st = build_stable_scale_figure()
     f_mv = build_moving_camera_clean_figure()
     f_oc = build_occlusion_timeline_clean()
-    f_gf = build_good_vs_fail_figure()
-    print("Generated all hero GIF & clean lab figures:", [str(p) for p in (gif_p, kf_p, f_st, f_mv, f_oc, f_gf)])
+    print("Generated all hero GIF & clean lab figures:", [str(p) for p in (gif_p, kf_p, sg, sk, f_st, f_mv, f_oc, f_gf)])
 
 
 if __name__ == "__main__":
-    build_all()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--only-squirrel", action="store_true")
+    args = ap.parse_args()
+    build_all(only_squirrel=args.only_squirrel)
