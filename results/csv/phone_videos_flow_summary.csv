@@ -1,0 +1,4 @@
+sequence,sampled_pairs,dis_raw_bg_med,dis_res_bg_med,dis_bg_red_med_pct,dis_res_fg_med,fb_raw_bg_med,fb_res_bg_med,fb_bg_red_med_pct,best_dis_clip_frame,best_dis_orig_frame,best_dis_red_pct,worst_dis_clip_frame,worst_dis_orig_frame,worst_dis_red_pct
+stable,29,0.0527,0.0641,-19.13,6.6984,0.0,0.0284,0.0,10,674,-0.39,4,668,-152.86
+moving_camera,28,5.9619,5.9299,13.62,7.0668,4.3896,5.1718,-12.33,100,505,35.85,76,481,-24.2
+occlusion,49,1.0338,0.5152,45.86,6.8162,0.7189,0.5884,-21.58,12,54,79.39,192,234,-811.47
