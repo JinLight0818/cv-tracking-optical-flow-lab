@@ -8,11 +8,11 @@ OpenCV-ээр бодит бичлэг болон гэрэл зургаар үү�
 
 *Камер хөдөлж байхад хоёр хүрээ нохойноос зүүн тийш хазайж, #451 дээр төвийн зөрүү BOOSTING-д 199 px, CSRT-д 227 px хүрч байгааг ажиглаарай.*
 
-**Эх кадр `#405–#515`** · GIF-д 111 кадр, үнэлгээнд 110 кадр · [Бүтэн MP4](data/phone_videos/moving_camera.mp4) · [Гараар шошголсон хүрээ](results/csv/phone_moving_camera_gt.csv) · [BOOSTING](results/csv/track_moving_camera_BOOSTING.csv) · [CSRT](results/csv/track_moving_camera_CSRT.csv) · [Хэмжилтийн дүн](results/csv/phone_moving_camera_summary.csv)
+Энэ бичлэгийн үнэлгээнд орсон 110 кадрт анхны хүрээг хөдөлгөөгүй STATIC арга **0.4806** дундаж IoU авсан нь CSRT-ийн **0.4695**-аас өндөр байв. BOOSTING **0.5099**-өөр тэргүүлсэн ч STATIC-аас **0.0293**-аар илүү байлаа. Бүх аргыг ижил кадрын муж, ижил анхны хүрээгээр үнэлсэн.
+
+**Эх тайрдас `#405–#515`** · Эх 111 кадр · GIF 49 кадр · Үнэлсэн 110 кадр · [Бүтэн MP4](data/phone_videos/moving_camera.mp4) · [Гараар шошголсон хүрээ](results/csv/phone_moving_camera_gt.csv) · [BOOSTING](results/csv/track_moving_camera_BOOSTING.csv) · [CSRT](results/csv/track_moving_camera_CSRT.csv) · [Хэмжилтийн дүн](results/csv/phone_moving_camera_summary.csv)
 
 Гурван GIF-д кадрыг эх бичлэгийн 0-ээс эхэлсэн дугаараар тэмдэглэв. Цагаан тасархай `GT` нь гараар шошголсон хүрээ. IoU нь хоёр хүрээний давхцсан талбайг нийлсэн талбайд хуваасан 0–1 оноо. Энд `IoU ≥ 0.50`-ийг амжилттай дагасан гэж тооцсон. [Нэгдсэн хэмжилт](results/csv/phone_videos_summary.csv) · [Эх дүрсний бүртгэл](NOTICE.md)
-
-BOOSTING **0.5099**, хөдөлгөөнгүй хүрээний суурь арга **0.4806**, CSRT **0.4695** дундаж IoU авсан.
 
 Дэвсгэрийн ерөнхий хөдөлгөөнийг цэгээр тооцож (`FB-LK + RANSAC 2D affine`), `DIS_MEDIUM`-ийн пикселийн хөдөлгөөнөөс хасав. `#505`-д дэвсгэрийн медиан шилжилт **5.26-аас 3.37 px** болж **35.85% буурсан**. `#481`-д **8.29-өөс 10.30 px** болж **24.20% өссөн**. Энэ кадрт 2D загварт тохирсон цэгийн хувь 34.1% байсан. Ойрын өвсний параллакс болон линзийн гажилт нөлөөлсөн байж болно. 28 хос кадрын медиан бууралт **13.62%**. [Кадр тус бүрийн хөдөлгөөний CSV](results/csv/phone_moving_camera_flow_pairs.csv) · [Нохой дагасан хүрээний CSV](results/csv/phone_moving_camera_summary.csv)
 
@@ -26,7 +26,7 @@ BOOSTING **0.5099**, хөдөлгөөнгүй хүрээний суурь арг
 
 *Тэрэг ойртоход KCF-ийн улбар шар хүрээ 98 × 59 px хэвээр үлдэж, CSRT-ийн ногоон хүрээ сүүлийн кадрт 115 × 69 px болж тэлж байгааг ажиглаарай.*
 
-**Эх кадр `#664–#721`** · GIF-д 58 кадр, үнэлгээнд 57 кадр · [Бүтэн MP4](data/phone_videos/stable.mp4) · [Гараар шошголсон хүрээ](results/csv/phone_stable_gt.csv) · [KCF](results/csv/track_stable_KCF.csv) · [CSRT](results/csv/track_stable_CSRT.csv) · [Хэмжилтийн дүн](results/csv/phone_stable_summary.csv)
+**Эх тайрдас `#664–#721`** · Эх 58 кадр · GIF 27 кадр · Үнэлсэн 57 кадр · [Бүтэн MP4](data/phone_videos/stable.mp4) · [Гараар шошголсон хүрээ](results/csv/phone_stable_gt.csv) · [KCF](results/csv/track_stable_KCF.csv) · [CSRT](results/csv/track_stable_CSRT.csv) · [Хэмжилтийн дүн](results/csv/phone_stable_summary.csv)
 
 `stable` бичлэгт жижиг тэрэгний тэмдэглэсэн хүрээ `98 × 59 px`-ээс `121 × 87 px` болж томорсон. CSRT **0.8505**, MEDIANFLOW **0.8267**, KCF **0.7213** дундаж IoU авсан. CSRT үнэлгээний **57/57** кадрт 0.50 босгыг хангав. Тогтмол хэмжээтэй KCF, BOOSTING, MIL-ийн хүрээ тэрэгний төв орчим үлдсэн ч томорсон дүрсийг бага хамарчээ. TLD-ийн хүрээ дээврийн хэсэгт хумигдаж, дундаж IoU **0.4070** болсон.
 
@@ -40,7 +40,7 @@ BOOSTING **0.5099**, хөдөлгөөнгүй хүрээний суурь арг
 
 *Алим тунгалаг хавтангийн цаагуур ороход дүрс нь сунаж гажиж, хавтангийн ирмэгээс гарахад буцаад дугуувтар болж байгааг ажиглаарай.*
 
-**Эх кадр `#42–#235`** · GIF-д 194 кадр, үнэлгээнд 193 кадр · [Бүтэн MP4](data/phone_videos/occlusion.mp4) · [Гараар шошголсон хүрээ](results/csv/phone_occlusion_gt.csv) · [KCF](results/csv/track_occlusion_KCF.csv) · [CSRT](results/csv/track_occlusion_CSRT.csv) · [Хэмжилтийн дүн](results/csv/phone_occlusion_summary.csv)
+**Эх тайрдас `#42–#235`** · Эх 194 кадр · GIF 89 кадр · Үнэлсэн 193 кадр · [Бүтэн MP4](data/phone_videos/occlusion.mp4) · [Гараар шошголсон хүрээ](results/csv/phone_occlusion_gt.csv) · [KCF](results/csv/track_occlusion_KCF.csv) · [CSRT](results/csv/track_occlusion_CSRT.csv) · [Хэмжилтийн дүн](results/csv/phone_occlusion_summary.csv)
 
 Алим бүрэн алга болоогүй (`absent_frames = 0`). CSRT, CSRT_REDETECT хоёр **193/193** кадрт босгыг хангасан. KCF **0.7190** дундаж IoU-аар тэргүүлж, **191/193** кадрт босгыг хангасан. MIL шилнээс гарсан заагаас 31 кадрын дараа босгод хүрсэн.
 
@@ -180,7 +180,7 @@ python -m unittest discover -s tests -v
 
 ### PDF-ийн давталт ба бүтэн туршилт
 
-Гурван эх MP4 нь `data/phone_videos/` дотор `stable.mp4`, `moving_camera.mp4`, `occlusion.mp4` нэрээр байна. GIF үүсгэх команд эдгээр MP4, `results/csv/phone_*_gt.csv`, `results/csv/track_*.csv` файлуудыг уншиж `results/figures/custom_videos/tracking_{stable,moving_camera,occlusion}.gif` үүсгэнэ. Бүтэн туршилтын өмнө галт тэрэг, хэрмийн дээрх командыг ажиллуул. [Эх өгөгдөл ба лицензийн бүртгэл](NOTICE.md)
+Гурван бүтэн MP4 нь `data/phone_videos/` дотор `stable.mp4`, `moving_camera.mp4`, `occlusion.mp4` нэрээр байна. GIF үүсгэх команд эдгээр MP4, `results/csv/phone_*_gt.csv`, `results/csv/track_*.csv` файлуудыг уншиж `results/figures/custom_videos/tracking_{stable,moving_camera,occlusion}.gif` үүсгэнэ. GIF-үүд эхний, гол болон сүүлийн кадрыг багтааж, секундэд ойролцоогоор 11 кадраар тоглоно. Бүтэн туршилтын өмнө галт тэрэг, хэрмийн дээрх командыг ажиллуул. [Эх өгөгдөл ба лицензийн бүртгэл](NOTICE.md)
 
 ```bash
 python make_three_videos_figures.py --phone-gifs
@@ -190,11 +190,28 @@ python make_three_videos_figures.py --phone-gifs
 python dataset_prep.py --all
 python reproduce_pdf.py --mode all-pdf --no-show
 python benchmark_flow.py && python benchmark_track.py
+```
+
+Репод байгаа `data/phone_videos/moving_camera.mp4` нь бүтэн 91.960 секунд, 2,299 кадр, 25 FPS болон кадр бүрийн хугацааны тэмдэглэгээг хадгалж дахин кодлосон хувилбар. Энэ файлаар туршилтыг ажиллуулж болно. Өмнөх CSV-ийн дүнг яг тулгахдаа тусдаа ажлын хуулбар ашиглаж, тэндхийн `data/phone_videos/moving_camera.mp4` замд хэмжилтэд ашигласан эх MP4-ийг байрлуул. Хоёр файлын SHA-256 тусдаа бүртгэлтэй. [Эх MP4 ба репогийн хувилбарын SHA-256](NOTICE.md)
+
+```bash
 python custom_video_lab.py --run-three
 python make_figure.py && python make_three_videos_figures.py
 python make_three_videos_figures.py --phone-gifs
 ```
 
 PDF-ийн давталтын бичлэг `results/videos/pdf_replay_*.mp4`-д, хэмжилт `results/csv/`-д, тайлангийн зураг `results/figures/`-д үүснэ.
+
+#### Нохойны бичлэгийн давтан хэмжилт
+
+Тусдаа ажлын хавтаст OpenCV 4.14.0-өөр ижил анхны хүрээ, ижил 110 үнэлгээний кадр ашиглан гурван аргын дундаж IoU-г дахин хэмжив. Арга бүрийг файл тус бүр дээр нэг удаа ажиллуулсан.
+
+| Арга | Эх MP4 | Репод байгаа дахин кодлосон MP4 |
+| --- | ---: | ---: |
+| STATIC | 0.4806 | 0.4806 |
+| BOOSTING | 0.5099 | 0.5090 |
+| CSRT | 0.4695 | 0.5625 |
+
+Энэ давталтад эх MP4 дээр BOOSTING, дахин кодлосон MP4 дээр CSRT хамгийн өндөр дундаж IoU авсан.
 
 [Тохиргоо](config.py) · [Хэмжүүрийн тооцоо](metrics.py) · [Өгөгдөл бэлтгэх код](dataset_prep.py) · [Зураг үүсгэх код](make_three_videos_figures.py) · [Тестүүд](tests/test_metrics_and_pipeline.py) · [Суурь туршилтын график](results/figures/tracking_flow_metrics.png) · [Word тайлан үүсгэх код](build_report.py)

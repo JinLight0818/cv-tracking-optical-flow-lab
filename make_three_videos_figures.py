@@ -52,10 +52,12 @@ TRACKER_COLORS_HEX = {
     "STATIC": "#64748b",
 }
 
+PHONE_GIF_FPS = 11
 PHONE_GIFS = {
-    "stable": (664, 721, "KCF", (1300, 258, 1920, 626), 512, 128),
-    "moving_camera": (405, 515, "BOOSTING", (470, 238, 1448, 786), 480, 80),
-    "occlusion": (42, 235, "KCF", (0, 425, 720, 1112), 384, 64),
+    # Start, end, first tracker, crop, width, palette size, key source frames.
+    "stable": (664, 721, "KCF", (1300, 258, 1920, 626), 512, 128, (693,)),
+    "moving_camera": (405, 515, "BOOSTING", (470, 238, 1448, 786), 480, 80, (451, 460)),
+    "occlusion": (42, 235, "KCF", (0, 425, 720, 1112), 384, 64, (85, 139, 172)),
 }
 
 
@@ -156,17 +158,27 @@ def _phone_box(row: Dict[str, str], flag: str, prefix: str = "") -> Tuple[float,
 
 
 def build_phone_gifs() -> None:
-    """Render each measured source frame with its own CSV ground truth and predictions."""
+    """Sample the measured clips for playback with frame-matched CSV overlays."""
     header = 42
     font = ImageFont.truetype(FONT_BOLD, 21)
     white, orange, green = (255, 255, 255), (255, 164, 58), (98, 247, 172)
     CUSTOM_FIG_DIR.mkdir(parents=True, exist_ok=True)
 
-    for seq, (start, end, tracker, crop, width, colors) in PHONE_GIFS.items():
+    for seq, (start, end, tracker, crop, width, colors, key_frames) in PHONE_GIFS.items():
         gt = _phone_rows(CSV_DIR / f"phone_{seq}_gt.csv")
         first = _phone_rows(CSV_DIR / f"track_{seq}_{tracker}.csv")
         csrt = _phone_rows(CSV_DIR / f"track_{seq}_CSRT.csv")
-        frames, indices, fps = load_video_clip(DATA_DIR / "phone_videos" / f"{seq}.mp4", start, end)
+        frames, _, source_fps = load_video_clip(DATA_DIR / "phone_videos" / f"{seq}.mp4", start, end)
+        duration = len(frames) / source_fps
+        required = {start, end, *key_frames}
+        sample_count = max(len(required), round(duration * PHONE_GIF_FPS))
+        sampled = set(np.linspace(start, end, sample_count).round().astype(int))
+        # Keep key frames by replacing nearby samples without extending playback.
+        for key in sorted(required - sampled):
+            nearest = min(sampled - required, key=lambda orig: (abs(orig - key), orig))
+            sampled.remove(nearest)
+            sampled.add(key)
+        playback_fps = len(sampled) / duration
         left, top, right, bottom = crop
         height = round((bottom - top) * width / (right - left))
         sx, sy = width / (right - left), height / (bottom - top)
@@ -177,7 +189,8 @@ def build_phone_gifs() -> None:
 
         with tempfile.TemporaryDirectory(dir=CUSTOM_FIG_DIR) as tmpdir:
             tmp = Path(tmpdir)
-            for index, (orig, frame) in enumerate(zip(indices, frames, strict=True)):
+            for index, orig in enumerate(sorted(sampled)):
+                frame = frames[orig - start]
                 rgb = cv2.cvtColor(frame[top:bottom, left:right], cv2.COLOR_BGR2RGB)
                 canvas = Image.new("RGB", (width, height + header), (18, 24, 33))
                 canvas.paste(Image.fromarray(rgb).resize((width, height), Image.Resampling.LANCZOS), (0, header))
@@ -211,9 +224,8 @@ def build_phone_gifs() -> None:
                 canvas.save(tmp / f"frame_{index:03d}.png", compress_level=1)
 
             ffmpeg = ["ffmpeg", "-v", "error", "-y", "-filter_complex_threads", "1"]
-            fps = str(round(fps, 6))
             subprocess.run(
-                ffmpeg + ["-framerate", fps, "-i", str(tmp / "frame_%03d.png"),
+                ffmpeg + ["-framerate", f"{playback_fps:.6f}", "-i", str(tmp / "frame_%03d.png"),
                           "-filter_complex",
                           f"split[video][colors];[colors]palettegen=max_colors={colors}[pal];"
                           "[video][pal]paletteuse=dither=none:diff_mode=rectangle",
@@ -221,7 +233,7 @@ def build_phone_gifs() -> None:
                 check=True,
             )
             (tmp / output.name).replace(output)
-        print(f"{output} ({len(frames)} frames)")
+        print(f"{output} ({len(sampled)} GIF frames from {len(frames)} source frames)")
 
 
 def _render_leman_split_frame(
