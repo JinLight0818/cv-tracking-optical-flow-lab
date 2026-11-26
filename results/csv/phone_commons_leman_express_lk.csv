@@ -1,0 +1,9 @@
+sequence,scope,variant,init_pts,retained_initial_pts,redetected_pts,final_active_pts,retention_pct,median_step_px,flow_gt
+commons_leman_express,full_frame,LK_PDF_win200_noFB,10,10,0,10,100.0,0.6236,none
+commons_leman_express,full_frame,LK_PDF_win200_FB,10,10,0,10,100.0,0.6236,none
+commons_leman_express,full_frame,LK_PDF_win200_FB_redet5,10,10,0,10,100.0,0.6236,none
+commons_leman_express,full_frame,LK_small_win15_FB,10,10,0,10,100.0,0.6318,none
+commons_leman_express,init_roi,LK_PDF_win200_noFB,10,10,0,10,100.0,0.8375,none
+commons_leman_express,init_roi,LK_PDF_win200_FB,10,10,0,10,100.0,0.8375,none
+commons_leman_express,init_roi,LK_PDF_win200_FB_redet5,10,10,0,10,100.0,0.8375,none
+commons_leman_express,init_roi,LK_small_win15_FB,10,10,0,10,100.0,1.2111,none

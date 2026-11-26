@@ -41,7 +41,15 @@ Raw third-party datasets and course PDFs are **excluded** from this repository (
 
 6. **User-Provided External Video Clips (`stable`, `moving_camera`, `occlusion`)**
    - Local source filenames (excluded from Git via `.gitignore`, hashed for reproducibility):
-     - `Тогтвортой камертай жишээ.mp4` (`stable`, `1920x1080`, `23.976 fps`, SHA-256 prefix `77e5daee4220630b`, container metadata `ISO Media file produced by Google Inc.`, clip `orig 664..721`)
-     - `Камер өөрөө хөдөлж байгаа жишээ.mp4` (`moving_camera`, `1920x1080`, `25.000 fps`, SHA-256 prefix `df3dd08119b28dae`, container metadata `ISO Media file produced by Google Inc.`, clip `orig 405..515`)
-     - `Объект халхлагдаад дахин гарч ирэх жишээ.mp4` (`occlusion`, `720x1280`, `24.000 fps`, SHA-256 prefix `fd1c402e850052c9`, container metadata `ISO Media file produced by Google Inc.`, clip `orig 42..235`)
-   - Public redistribution note: Because these `.mp4` files are externally encoded web downloads whose public redistribution license is unverified, neither raw videos nor extracted RGB video frames are committed or published to GitHub. Only local analysis CSVs (`results/csv/phone_*.csv`, `results/csv/track_{stable,moving_camera,occlusion}_*.csv`) and source-image-free coordinate schematics, pure optical-flow HSV/vector plots, and quantitative charts (`results/figures/custom_videos/*.png`) are published; raw RGB QA overlays remain strictly in `results/local_only/`.
+     - `Тогтвортой камертай жишээ.mp4` (`stable`, `1920x1080`, `23.976 fps`, SHA-256 prefix `77e5daee4220630b`, Subaru EyeSight miniature commercial clip, DASH container `Google Inc.` tag — does not itself confer public redistribution rights, clip `orig 664..721`)
+     - `Камер өөрөө хөдөлж байгаа жишээ.mp4` (`moving_camera`, `1920x1080`, `25.000 fps`, SHA-256 prefix `df3dd08119b28dae`, `Insta360 ONE X2` RC buggy / dog clip, DASH container `Google Inc.` tag, clip `orig 405..515`)
+     - `Объект халхлагдаад дахин гарч ирэх жишээ.mp4` (`occlusion`, `720x1280`, `24.000 fps`, SHA-256 prefix `fd1c402e850052c9`, Invisibility Shield lenticular refraction apple clip, DASH container `Google Inc.` tag, clip `orig 42..235`)
+   - Public redistribution note: Because these `.mp4` downloads lack verified public CC0/CC-BY redistribution terms, neither raw videos nor extracted RGB video frames are committed or published to GitHub. Benchmark CSVs, pure DIS optical-flow HSV maps (`moving_camera_flow.png`), and quantitative IoU timelines are published; raw RGB QA overlays stay strictly in `results/local_only/`.
+
+7. **Wikimedia Commons `File:Arrivée en gare du Léman Express pour Coppet (2019-12-16).webm`**
+   - Page URL: `https://commons.wikimedia.org/wiki/File:Arriv%C3%A9e_en_gare_du_L%C3%A9man_Express_pour_Coppet_(2019-12-16).webm`
+   - Direct Media URL: `https://upload.wikimedia.org/wikipedia/commons/9/9b/Arriv%C3%A9e_en_gare_du_L%C3%A9man_Express_pour_Coppet_%282019-12-16%29.webm`
+   - Author / Credit: `Thibaut120094` (Own work, recorded 2019-12-16)
+   - License: **CC0 1.0 Universal Public Domain Dedication** (`https://creativecommons.org/publicdomain/zero/1.0/deed.en`)
+   - SHA-1 (upstream): `954c86af970dff484f6f72218778fc147fec794f`
+   - Modifications: Sliced continuous range `orig #110–#260` (`151 frames`, `0.00–5.00 s @ 30.000 fps`), cropped identically (`[x=330..920, y=125..520]`) for side-by-side display, overlaid manually verified GT and `KCF`/`CSRT` tracker boxes, and encoded at real-time 1.0× speed (`10 fps`, 51 frames) into `results/figures/custom_videos/tracking_demo.gif`, `tracking_demo_keyframes.png`, and `summary_good_vs_fail.png`. Raw `.webm` remains in `data/commons/` (excluded via `.gitignore`).

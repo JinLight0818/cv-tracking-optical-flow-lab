@@ -173,6 +173,15 @@ class MetricsAndPipelineTests(unittest.TestCase):
                 self.assertEqual(r["absent_frames"], "0")
                 self.assertEqual(r["absent_fp_pct"], "N/A (0 кадр)")
 
+        lm_path = CSV_DIR / "phone_commons_leman_express_summary.csv"
+        if lm_path.exists():
+            with open(lm_path, newline="") as f:
+                lm_rows = list(csv.DictReader(f))
+            self.assertEqual(len(lm_rows), 8)
+            gif_path = CSV_DIR.parent / "figures" / "custom_videos" / "tracking_demo.gif"
+            self.assertTrue(gif_path.exists())
+            self.assertLess(gif_path.stat().st_size, 5_500_000)
+
 
 if __name__ == "__main__":
     unittest.main()
