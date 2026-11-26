@@ -323,7 +323,9 @@ def _render_squirrel_split_frame(
     draw = ImageDraw.Draw(canvas)
 
     present = int(gt_row["present"]) == 1
-    vis_pct = int(round(float(gt_row["visible_fraction"]) * 100))
+    visible_fraction = float(gt_row["visible_fraction"])
+    vis_pct = int(round(visible_fraction * 100))
+    absent_label = "Бүрэн далд" if visible_fraction == 0 else "Үнэлгээнд далд"
     gx, gy, gw, gh = float(gt_row["vis_x"]), float(gt_row["vis_y"]), float(gt_row["vis_w"]), float(gt_row["vis_h"])
 
     def draw_gt(d_ctx: ImageDraw.ImageDraw) -> None:
@@ -343,12 +345,12 @@ def _render_squirrel_split_frame(
         kx, ky, kw, kh = float(kcf_row["box_x"]), float(kcf_row["box_y"]), float(kcf_row["box_w"]), float(kcf_row["box_h"])
         x1, y1, x2, y2 = kx * sx, ky * sy, (kx + kw) * sx, (ky + kh) * sy
         dl.rectangle([int(round(x1)), int(round(y1)), int(round(x2)), int(round(y2))], outline=(249, 115, 22), width=3)
-        lbl = f"KCF {float(kcf_row['iou']):.2f}" if present else "KCF: Далд"
+        lbl = f"KCF {float(kcf_row['iou']):.2f}" if present else "KCF: Буруу хүрээ"
         _draw_pill(dl, (max(4, int(x1)), max(4, int(y1) - 21)), lbl, (234, 88, 12), (255, 255, 255), font_badge)
     else:
         _draw_pill(dl, (8, 8), "KCF: Алдсан", (185, 28, 28), (255, 255, 255), font_badge)
     if not present:
-        _draw_pill(dl, (8, panel_h - 24), "Бүрэн далд (0%)", (30, 41, 59), (255, 255, 255), font_badge)
+        _draw_pill(dl, (8, panel_h - 24), absent_label, (30, 41, 59), (255, 255, 255), font_badge)
 
     # Right panel: TLD (recovers after trunk at #49, confirmed 3-frame >=0.5 at #51)
     right_img = base_panel.copy()
@@ -367,7 +369,7 @@ def _render_squirrel_split_frame(
             tag = f"TLD {tld_iou:.2f}"
         else:
             box_col, pill_bg = (220, 38, 38), (185, 28, 28)
-            tag = "TLD: Хуурамч (0%)"
+            tag = "TLD: Буруу хүрээ"
         dr.rectangle([int(round(x1)), int(round(y1)), int(round(x2)), int(round(y2))], outline=box_col, width=3)
         _draw_corner_brackets(dr, x1, y1, x2, y2, (255, 255, 255) if tld_iou >= 0.5 else (254, 202, 202), arm=6, width=2)
         tw_px = dr.textbbox((0, 0), tag, font=font_badge)[2] + 12
@@ -377,13 +379,13 @@ def _render_squirrel_split_frame(
     else:
         _draw_pill(dr, (8, 8), "TLD: Алдсан", (185, 28, 28), (255, 255, 255), font_badge)
     if not present:
-        _draw_pill(dr, (8, panel_h - 24), "Бүрэн далд (0%)", (30, 41, 59), (255, 255, 255), font_badge)
+        _draw_pill(dr, (8, panel_h - 24), absent_label, (30, 41, 59), (255, 255, 255), font_badge)
 
     canvas.paste(left_img, (pad, top_h))
     canvas.paste(right_img, (pad * 2 + panel_w, top_h))
 
     t_sec = fi / fps
-    state_str = "Бүрэн далд 0%" if not present else (f"Харагдалт {vis_pct}%" if vis_pct < 98 else "Цэвэр харагдаж байна")
+    state_str = absent_label if not present else (f"Харагдалт {vis_pct}%" if vis_pct < 98 else "Цэвэр харагдаж байна")
     draw.text((pad, 6), "KCF (улбар шар): далд ороод алдсан", fill=(15, 23, 42), font=font_hdr)
     draw.text((pad, 24), f"#{fi:02d}/65 ({t_sec:.2f}с)  |  {state_str}  |  FP=0/9", fill=(71, 85, 105), font=font_sub)
 
@@ -720,10 +722,10 @@ def build_all(only_squirrel: bool = False) -> None:
     CUSTOM_FIG_DIR.mkdir(parents=True, exist_ok=True)
     CUSTOM_LOCAL_DIR.mkdir(parents=True, exist_ok=True)
     sg, sk = build_squirrel_occlusion_gif_and_keyframes()
-    f_gf = build_good_vs_fail_figure()
     if only_squirrel:
-        print("Generated squirrel figures:", [str(p) for p in (sg, sk, f_gf)])
+        print("Generated squirrel figures:", [str(p) for p in (sg, sk)])
         return
+    f_gf = build_good_vs_fail_figure()
     gif_p, kf_p = build_cc0_hero_gif_and_keyframes()
     f_st = build_stable_scale_figure()
     f_mv = build_moving_camera_clean_figure()
