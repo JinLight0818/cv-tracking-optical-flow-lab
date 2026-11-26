@@ -167,7 +167,41 @@ OpenCV-ээр бодит бичлэг болон гэрэл зургаар үү�
 
 ## Ажиллуулах
 
-Linux дээр төслийн үндсэн хавтаснаас ажиллуул. Нийтэлсэн хэмжилтийн орчин нь Intel Core 5 120U, нэг CPU урсгал, Python 3.14.4, `opencv-contrib-python==4.14.0.94`, FFmpeg 8.0.1. GIF үүсгэхэд `ffmpeg`, DejaVu Sans фонтууд хэрэгтэй. Эх файл татах команд `curl` ашиглана.
+### Windows
+
+PowerShell-ийг төслийн үндсэн хавтсанд нээ. Python 3.14-ийн 64 битийн хувилбар болон `py` ажиллуулагч хэрэгтэй. Доорх командууд орчныг идэвхжүүлэхгүйгээр төслийн Python-ийг шууд ашиглана. [Python-ийн виртуал орчны заавар](https://docs.python.org/3/library/venv.html)
+
+```powershell
+py -3.14 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+#### PDF-ийн жишээг Windows дээр хурдан шалгах
+
+```powershell
+.\.venv\Scripts\python.exe dataset_prep.py --fetch-wikimedia --generate-controlled
+.\.venv\Scripts\python.exe reproduce_pdf.py --mode all-pdf --no-show
+```
+
+Таван объект дагагч, Lucas–Kanade, Farnebäck-ийн жишээний MP4 бичлэгүүд `results/videos/` дотор `pdf_replay_` угтвартай, хэмжилтийн CSV файлууд `results/csv/` дотор үүснэ.
+
+#### Бүрэн хэмжилт ба тест
+
+```powershell
+.\.venv\Scripts\python.exe dataset_prep.py --all
+.\.venv\Scripts\python.exe benchmark_flow.py
+.\.venv\Scripts\python.exe benchmark_track.py
+.\.venv\Scripts\python.exe custom_video_lab.py --run-three
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Хэмжилтийн CSV-үүд `results/csv/`-д үүснэ. Нохойны бичлэгийн өмнөх оноог тулгах бол эх MP4-ийг ашиглана. [Эх ба дахин кодлосон MP4-ийн бүртгэл](NOTICE.md)
+
+**GIF-ийг Windows дээр дахин үүсгэх.** GIF-ийн скрипт Linux-ийн DejaVu Sans фонтын замыг ашигладаг. Windows ашиглаж байгаа бол Ubuntu-г WSL-ээр нээгээд [Linux-ийн зааврыг](#linux) дага. [WSL суулгах заавар](https://learn.microsoft.com/en-us/windows/wsl/install)
+
+### Linux
+
+Төслийн үндсэн хавтаснаас ажиллуул. Нийтэлсэн хэмжилтийн орчин нь Linux, Intel Core 5 120U, нэг CPU урсгал, Python 3.14.4, `opencv-contrib-python==4.14.0.94`, FFmpeg 8.0.1. GIF үүсгэхэд `ffmpeg`, DejaVu Sans фонтууд хэрэгтэй. Эх файл татах команд `curl` ашиглана. Ubuntu болон WSL доторх Ubuntu-д эдгээрийг `sudo apt install python3-venv ffmpeg fonts-dejavu-core curl` командаар суулгана.
 
 ```bash
 python3 -m venv .venv
@@ -175,7 +209,7 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-### PDF-ийн жишээг хурдан шалгах
+#### PDF-ийн жишээг хурдан шалгах
 
 Дээрх суулгалтыг хийсний дараа төслийн үндсэн хавтсаас ажиллуулна. Эхний команд Wikimedia Commons-ийн зургийг татаж, жишээ кадруудыг бэлдэнэ. Хоёр дахь команд таван объект дагагч, Lucas–Kanade, Farnebäck-ийн жишээг цонх нээлгүй ажиллуулна.
 
@@ -186,7 +220,7 @@ python reproduce_pdf.py --mode all-pdf --no-show
 
 Долоон MP4 бичлэг `results/videos/` дотор `pdf_replay_` угтвартай үүснэ. Хэмжилтийн CSV файлууд `results/csv/`-д хадгалагдана.
 
-### Галт тэрэгний хэмжилтийг давтах
+#### Галт тэрэгний хэмжилтийг давтах
 
 ```bash
 mkdir -p data/commons
@@ -199,7 +233,7 @@ python custom_video_lab.py --evaluate data/commons/leman_express_cc0.webm \
 
 Үндсэн гаралт нь `results/csv/phone_commons_leman_express_summary.csv`. Кадр тус бүрийн хүрээ `results/csv/track_commons_leman_express_*.csv`, урсгалын хэмжилт `results/csv/phone_commons_leman_express_flow_pairs.csv`-д үүснэ.
 
-### Хэрмийн GIF-ийг үүсгэх
+#### Хэрмийн GIF-ийг үүсгэх
 
 Гэрэл зургуудыг скрипт татаж, хяналттай дараалал болон шошгыг үүсгэнэ.
 
@@ -211,7 +245,7 @@ python -m unittest discover -s tests -v
 
 Хэмжилт `results/csv/squirrel_occlusion_summary.csv`-д, `squirrel_occlusion.gif` ба `squirrel_occlusion_keyframes.png` нь `results/figures/custom_videos/`-д үүснэ.
 
-### PDF-ийн давталт ба бүтэн туршилт
+#### PDF-ийн давталт ба бүтэн туршилт
 
 Гурван бүтэн MP4 нь `data/phone_videos/` дотор `stable.mp4`, `moving_camera.mp4`, `occlusion.mp4` нэрээр байна. GIF үүсгэх команд эдгээр MP4, `results/csv/phone_*_gt.csv`, `results/csv/track_*.csv` файлуудыг уншиж `results/figures/custom_videos/tracking_{stable,moving_camera,occlusion}.gif` үүсгэнэ. GIF-үүд эхний, гол болон сүүлийн кадрыг багтааж, секундэд ойролцоогоор 11 кадраар тоглоно. Бүх зургийг дахин үүсгэх бол дээрх галт тэрэг, хэрмийн туршилтыг түрүүлж ажиллуул. [Эх өгөгдөл ба лицензийн бүртгэл](NOTICE.md)
 
@@ -235,7 +269,7 @@ python make_three_videos_figures.py --phone-gifs
 
 PDF-ийн давталтын бичлэг `results/videos/pdf_replay_*.mp4`-д, хэмжилт `results/csv/`-д, тайлангийн зураг `results/figures/`-д үүснэ.
 
-#### Нохойны бичлэгийн давтан хэмжилт
+### Нохойны бичлэгийн давтан хэмжилт
 
 Тусдаа ажлын хавтаст OpenCV 4.14.0-өөр ижил анхны хүрээ, ижил 110 үнэлгээний кадр ашиглан гурван аргын дундаж IoU-г дахин хэмжив. Арга бүрийг файл тус бүр дээр нэг удаа ажиллуулсан.
 
