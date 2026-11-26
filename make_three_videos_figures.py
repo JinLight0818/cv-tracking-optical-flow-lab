@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Generate clean lab-notebook figures and the real-camera CC0 hero GIF for README."""
+"""Generate lab figures and tracking GIFs for the README."""
 
 from __future__ import annotations
 
 import csv
+import math
 import subprocess
 import tempfile
 from pathlib import Path
@@ -49,6 +50,12 @@ TRACKER_COLORS_HEX = {
     "TLD": "#dc2626",
     "MEDIANFLOW": "#0d9488",
     "STATIC": "#64748b",
+}
+
+PHONE_GIFS = {
+    "stable": (664, 721, "KCF", (1300, 258, 1920, 626), 512, 128),
+    "moving_camera": (405, 515, "BOOSTING", (470, 238, 1448, 786), 480, 80),
+    "occlusion": (42, 235, "KCF", (0, 425, 720, 1112), 384, 64),
 }
 
 
@@ -126,6 +133,95 @@ def _draw_corner_brackets(
     for cx, cy, sx, sy in [(xi1, yi1, 1, 1), (xi2, yi1, -1, 1), (xi1, yi2, 1, -1), (xi2, yi2, -1, -1)]:
         draw.line([(cx, cy), (cx + sx * arm, cy)], fill=color, width=width)
         draw.line([(cx, cy), (cx, cy + sy * arm)], fill=color, width=width)
+
+
+def _phone_rows(path: Path) -> Dict[int, Dict[str, str]]:
+    rows = _read_csv_rows(path)
+    indexed = {int(row["orig_frame"]): row for row in rows}
+    if len(indexed) != len(rows):
+        raise ValueError(f"Duplicate orig_frame in {path}")
+    return indexed
+
+
+def _phone_box(row: Dict[str, str], flag: str, prefix: str = "") -> Tuple[float, float, float, float] | None:
+    if row.get(flag) != "1":
+        return None
+    try:
+        x, y, w, h = (float(row[f"{prefix}{axis}"]) for axis in "xywh")
+    except (KeyError, ValueError):
+        return None
+    if not all(map(math.isfinite, (x, y, w, h))) or w <= 0 or h <= 0:
+        return None
+    return x, y, w, h
+
+
+def build_phone_gifs() -> None:
+    """Render each measured source frame with its own CSV ground truth and predictions."""
+    header = 42
+    font = ImageFont.truetype(FONT_BOLD, 21)
+    white, orange, green = (255, 255, 255), (255, 164, 58), (98, 247, 172)
+    CUSTOM_FIG_DIR.mkdir(parents=True, exist_ok=True)
+
+    for seq, (start, end, tracker, crop, width, colors) in PHONE_GIFS.items():
+        gt = _phone_rows(CSV_DIR / f"phone_{seq}_gt.csv")
+        first = _phone_rows(CSV_DIR / f"track_{seq}_{tracker}.csv")
+        csrt = _phone_rows(CSV_DIR / f"track_{seq}_CSRT.csv")
+        frames, indices, fps = load_video_clip(DATA_DIR / "phone_videos" / f"{seq}.mp4", start, end)
+        left, top, right, bottom = crop
+        height = round((bottom - top) * width / (right - left))
+        sx, sy = width / (right - left), height / (bottom - top)
+        output = CUSTOM_FIG_DIR / f"tracking_{seq}.gif"
+        csrt_label_x = width - 83
+        tracker_label_x = csrt_label_x - round(font.getlength(tracker)) - 20
+        gt_label_x = tracker_label_x - round(font.getlength("GT")) - 20
+
+        with tempfile.TemporaryDirectory(dir=CUSTOM_FIG_DIR) as tmpdir:
+            tmp = Path(tmpdir)
+            for index, (orig, frame) in enumerate(zip(indices, frames, strict=True)):
+                rgb = cv2.cvtColor(frame[top:bottom, left:right], cv2.COLOR_BGR2RGB)
+                canvas = Image.new("RGB", (width, height + header), (18, 24, 33))
+                canvas.paste(Image.fromarray(rgb).resize((width, height), Image.Resampling.LANCZOS), (0, header))
+                draw = ImageDraw.Draw(canvas)
+                draw.text((12, 9), f"#{orig}", font=font, fill=white)
+                draw.text((gt_label_x, 9), "GT", font=font, fill=white)
+                draw.text((tracker_label_x, 9), tracker, font=font, fill=orange)
+                draw.text((csrt_label_x, 9), "CSRT", font=font, fill=green)
+
+                boxes = (
+                    (_phone_box(first.get(orig, {}), "valid_pred", "box_"), orange),
+                    (_phone_box(gt.get(orig, {}), "present"), white),
+                    (_phone_box(csrt.get(orig, {}), "valid_pred", "box_"), green),
+                )
+                for box, color in boxes:
+                    if box is None:
+                        continue
+                    x, y, w, h = box
+                    bounds = (
+                        round((x - left) * sx),
+                        round((y - top) * sy) + header,
+                        min(width - 1, round((x + w - left) * sx)),
+                        round((y + h - top) * sy) + header,
+                    )
+                    if color == white:
+                        _draw_dashed_rect(draw, *bounds, color=white, width=2)
+                    elif color == green:
+                        _draw_corner_brackets(draw, *bounds, color=green, arm=12, width=3)
+                    else:
+                        draw.rectangle(bounds, outline=orange, width=2)
+                canvas.save(tmp / f"frame_{index:03d}.png", compress_level=1)
+
+            ffmpeg = ["ffmpeg", "-v", "error", "-y", "-filter_complex_threads", "1"]
+            fps = str(round(fps, 6))
+            subprocess.run(
+                ffmpeg + ["-framerate", fps, "-i", str(tmp / "frame_%03d.png"),
+                          "-filter_complex",
+                          f"split[video][colors];[colors]palettegen=max_colors={colors}[pal];"
+                          "[video][pal]paletteuse=dither=none:diff_mode=rectangle",
+                          "-loop", "0", str(tmp / output.name)],
+                check=True,
+            )
+            (tmp / output.name).replace(output)
+        print(f"{output} ({len(frames)} frames)")
 
 
 def _render_leman_split_frame(
@@ -736,6 +832,11 @@ def build_all(only_squirrel: bool = False) -> None:
 if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--only-squirrel", action="store_true")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--only-squirrel", action="store_true")
+    mode.add_argument("--phone-gifs", action="store_true", help="Render the three measured phone-video clips")
     args = ap.parse_args()
-    build_all(only_squirrel=args.only_squirrel)
+    if args.phone_gifs:
+        build_phone_gifs()
+    else:
+        build_all(only_squirrel=args.only_squirrel)

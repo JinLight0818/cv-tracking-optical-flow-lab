@@ -1,72 +1,66 @@
 # Объект дагах ба оптик урсгал
 
-Камер хөдөлж эсвэл объектын хэмжээ тэлж, дүрс нь гажихад дагагч алгоритмууд хэрхэн хариу үйлдэл үзүүлдэг вэ?
+OpenCV-ээр бодит бичлэг болон гэрэл зургаар үүсгэсэн хяналттай дараалал дээр объект дагах найман аргыг харьцуулж, камерын хөдөлгөөн оптик урсгалд хэрхэн нөлөөлөхийг хэмжив.
 
-![Галт тэрэг ойртоход хоёр tracker хүрээний хэмжээг хэрхэн дагаж байгааг харьцуулсан бодит камерын туршилт](results/figures/custom_videos/tracking_demo.gif)
+## 1. Хөдөлгөөнт камер · гүйж буй нохой
 
-*Зураг 1. Бодит камерын `CC0 1.0` клип ([Léman Express, Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Arriv%C3%A9e_en_gare_du_L%C3%A9man_Express_pour_Coppet_(2019-12-16).webm), зохиогч `Thibaut120094`, `orig #110–#260` буюу `0.00–5.00 сек`, бодит 1.0× хурдтай, `10 FPS`, 684 px). Зүүн талд гараар шошголсон **GT** (тасархай цагаан), баруун талд ижил кадр дээр **KCF** (`+` улбар шар, тогтмол хэмжээтэй, `Mean IoU = 0.4400`, `IoU 1.00 → 0.17`) ба **CSRT** (`[ ]` ногоон, хэмжээ тэлдэг, `Mean IoU = 0.7767`, бүх `150` кадрт `≥ 0.50`) хэрхэн зөрөхийг харуулав. [Хөдөлгөөнгүй гол кадр](results/figures/custom_videos/tracking_demo_keyframes.png) | [Энэ клипийн 8 аргын CSV](results/csv/phone_commons_leman_express_summary.csv) | [Хэрмийн бүрэн халхлалтын CC0 демо GIF](results/figures/custom_videos/squirrel_occlusion.gif).*
+![Камер хөдөлж байхад нохой дээрх гараар шошголсон хүрээ болон BOOSTING, CSRT-ийн хүрээ](results/figures/custom_videos/tracking_moving_camera.gif)
 
-Энэ тайланд **IoU** гэдэг нь *хоёр хүрээ хэр давхцаж байгааг хэмждэг `0–1` оноо* (энэ туршилтад `IoU ≥ 0.50` бол амжилттай дагасан гэж үзнэ). Доорх жижиг хүснэгтэд гурван үндсэн видео туршилтын тус бүрийн нэг гол үр дүнг нэгтгэв ([дэлгэрэнгүй CSV](results/csv/phone_videos_summary.csv)):
+*Камер хөдөлж байхад хоёр хүрээ нохойноос зүүн тийш хазайж, #451 дээр төвийн зөрүү BOOSTING-д 199 px, CSRT-д 227 px хүрч байгааг ажиглаарай.*
 
-| Туршилт (кадрын муж) | Камер ба нөхцөл | Шалгасан гол асуулт | Нэг гол тоон үр дүн |
-| :--- | :--- | :--- | :--- |
-| **`stable`** (`orig #664–#721`, 58 кадр) | Хөдөлгөөнгүй студи, томрох тэрэг | Машин ойртоход хүрээ тэлэх үү? | **`CSRT`** ба **`CSRT_REDETECT`** дундаж IoU **`0.8505`** (`100% ≥ 0.50`) |
-| **`moving_camera`** (`orig #405–#515`, 111 кадр) | Тэрэгний `360°` камер, өвстэй талбай | Өвс урсахад нохойгоо алдах уу? | **`BOOSTING`** дундаж IoU **`0.5099`**. Нөхөлтийн дараа дэвсгэрийн хөдөлгөөн `#505`-д **35.85% буурч**, `#481`-д **24.20% өссөн** |
-| **`occlusion`** (`orig #42–#235`, 194 кадр) | Тунгалаг хугарлын хавтан ба улаан алим | Алим шилний дараа яаж харагдав? | **`KCF`** дундаж IoU **`0.7190`**, **`CSRT`** `193/193` кадр бүрд `≥ 0.50` (`absent_frames = 0`) |
+**Эх кадр `#405–#515`** · GIF-д 111 кадр, үнэлгээнд 110 кадр · [Бүтэн MP4](data/phone_videos/moving_camera.mp4) · [Гараар шошголсон хүрээ](results/csv/phone_moving_camera_gt.csv) · [BOOSTING](results/csv/track_moving_camera_BOOSTING.csv) · [CSRT](results/csv/track_moving_camera_CSRT.csv) · [Хэмжилтийн дүн](results/csv/phone_moving_camera_summary.csv)
 
-> **Эх дүрсний зөвшөөрлийн тэмдэглэл:** Хэмжилт хийсэн 3 видео (`Тогтвортой камертай жишээ.mp4`, `Камер өөрөө хөдөлж байгаа жишээ.mp4`, `Объект халхлагдаад дахин гарч ирэх жишээ.mp4`) нь контейнерийн метадата болон хайлтаар гаднын арилжааны/YouTube DASH бичлэгүүд (Subaru EyeSight сурталчилгаа, Insta360 нохойтой хөөцөлдөөн, Invisibility Shield линзний туршилт) болох нь харагдсан ч дахин нийтлэх чөлөөт лиценз нь баталгаажаагүй. Тиймээс зөвшөөрөл тодорхой болох хүртэл тэдгээрийн түүхий кадр ба overlay-г локалд (`results/local_only/`) хадгалж, README дээр **бодит зөвшөөрөлтэй `CC0 1.0` камерын дүрс (`Léman Express`)**, хэмжилтийн график, хүснэгтийг ашиглав ([NOTICE.md](NOTICE.md)).
+Гурван GIF-д кадрыг эх бичлэгийн 0-ээс эхэлсэн дугаараар тэмдэглэв. Цагаан тасархай `GT` нь гараар шошголсон хүрээ. IoU нь хоёр хүрээний давхцсан талбайг нийлсэн талбайд хуваасан 0–1 оноо. Энд `IoU ≥ 0.50`-ийг амжилттай дагасан гэж тооцсон. [Нэгдсэн хэмжилт](results/csv/phone_videos_summary.csv) · [Эх дүрсний бүртгэл](NOTICE.md)
 
----
+BOOSTING **0.5099**, хөдөлгөөнгүй хүрээний суурь арга **0.4806**, CSRT **0.4695** дундаж IoU авсан.
 
-## 1. Машин ойртоход хүрээ тэлэх үү?
+Дэвсгэрийн ерөнхий хөдөлгөөнийг цэгээр тооцож (`FB-LK + RANSAC 2D affine`), `DIS_MEDIUM`-ийн пикселийн хөдөлгөөнөөс хасав. `#505`-д дэвсгэрийн медиан шилжилт **5.26-аас 3.37 px** болж **35.85% буурсан**. `#481`-д **8.29-өөс 10.30 px** болж **24.20% өссөн**. Энэ кадрт 2D загварт тохирсон цэгийн хувь 34.1% байсан. Ойрын өвсний параллакс болон линзийн гажилт нөлөөлсөн байж болно. 28 хос кадрын медиан бууралт **13.62%**. [Кадр тус бүрийн хөдөлгөөний CSV](results/csv/phone_moving_camera_flow_pairs.csv) · [Нохой дагасан хүрээний CSV](results/csv/phone_moving_camera_summary.csv)
 
-Хөдөлгөөнгүй камерт (`stable`, `1920×1080`, `23.976 fps`) жижиг тэрэг баруун захаас төврүү ойртохдоо анхны `98×59 px` хэмжээнээсээ `121×87 px` болж талбай нь **1.82 дахин** томорсон. Хүрээний хэмжээг дагадаг **`CSRT`** болон **`MEDIANFLOW`** нь `0.8505` ба `0.8267` IoU авсан бол, тогтмол хэмжээтэй `KCF`, `BOOSTING`, `MIL` тэрэгний төв дээр тогтсон ч тэлээгүй тул `0.72–0.73` дээр тогтсон, харин `TLD` жижиг дээвэр дээр хумигдаж `0.4070` болсон ([phone_stable_summary.csv](results/csv/phone_stable_summary.csv)).
+![505 ба 481-р кадрын дэвсгэрийн оптик урсгалын өнгөт зураглал, камерын нөхөлтийн өмнө ба дараа](results/figures/custom_videos/moving_camera_flow.png)
 
-![Тогтвортой камер дээрх тэлэлт ба IoU график](results/figures/custom_videos/stable_scale_iou.png)
-*Зураг 2. `stable` тайрдсын (`orig #664–#721`) тэлэлтийн муруй ба 8 аргын дундаж IoU. `CSRT` ба `CSRT_REDETECT` ижил `0.8505` авч `100%` `≥ 0.50` байв. Бодит камерт ойртож томрох ижил үзэгдэл `CC0 Léman Express`-ийн дараах гурван кадрт харагдана:*
+*Дээд мөрөнд нөхөлтийн дараа дэвсгэрийн урсгал багассан бол доод мөрөнд зүүн дээд хэсгийн үлдэгдэл урсгал нэмэгдсэн.*
 
-![CC0 бодит камерт галт тэрэг ойртоход KCF ба CSRT зөрөх гол кадрууд](results/figures/custom_videos/tracking_demo_keyframes.png)
-*Зураг 3. Нүүрний `tracking_demo.gif`-ийн эхлэл (`0.00с`), дунд (`2.50с`), төгсгөл (`5.00с`) кадрууд. Ижил scale ба crop дээр `KCF` тогтмол жижиг хүрээтэй үлдсэн бол `CSRT` ойртох хөдөлгөөнийг дагаж тэлсэн.*
+## 2. Тогтвортой камер · ойртож буй тэрэг
 
----
+![Ойртож буй жижиг тэрэгний гараар шошголсон хүрээ болон KCF, CSRT-ийн хүрээ](results/figures/custom_videos/tracking_stable.gif)
 
-## 2. Өвс урсахад нохойгоо алдах уу?
+*Тэрэг ойртоход KCF-ийн улбар шар хүрээ 98 × 59 px хэвээр үлдэж, CSRT-ийн ногоон хүрээ сүүлийн кадрт 115 × 69 px болж тэлж байгааг ажиглаарай.*
 
-`moving_camera` (`1920×1080`, `25.0 fps`, `orig #405–#515`) бичлэгт тэргэн дээрх `360°` камер урагш давхиж бас эргэхэд арын хуурай өвс маш хурдан урсдаг. **Optical flow**-ээр (`DIS_MEDIUM`) дэвсгэрийн глобал хөдөлгөөнийг `RANSAC 2D affine`-ээр хасахад эргэлт голлосон **`orig #505`** кадрт дэвсгэрийн медиан хөдөлгөөн `5.26 px → 3.37 px` болж **35.85% буурсан** (`inlier = 60.0%`). Харин **`orig #481`** кадрт 2D загварт тохирсон цэгийн хувь `34.1%` болж, нөхөлтийн дараах дэвсгэрийн хөдөлгөөн **`8.29 px → 10.30 px`** буюу **24.20% өссөн**. Ойрын өвсний параллакс болон `360°` линзийн гажилт үүнд нөлөөлсөн байж болно ([phone_moving_camera_flow_pairs.csv](results/csv/phone_moving_camera_flow_pairs.csv)).
+**Эх кадр `#664–#721`** · GIF-д 58 кадр, үнэлгээнд 57 кадр · [Бүтэн MP4](data/phone_videos/stable.mp4) · [Гараар шошголсон хүрээ](results/csv/phone_stable_gt.csv) · [KCF](results/csv/track_stable_KCF.csv) · [CSRT](results/csv/track_stable_CSRT.csv) · [Хэмжилтийн дүн](results/csv/phone_stable_summary.csv)
 
-Энд хоёр өөр хэмжүүрийг салгаж ойлгох нь чухал:
-1. **Буурсан хөдөлгөөний хэмжээ (`px` ба `%`):** Камерын эргэлтийг хассаны дараа *дэвсгэр пикселүүдийн хөдөлгөөний хурд* хэр багассаныг хэмжинэ (28 хосын медиан `+13.62%`). Энэ нь дүрс тогтворжуулалтын хэмжүүр бөгөөд `flow GT` байхгүй тул **EPE биш**.
-2. **Тэмдэглэсэн хүрээтэй давхцах байдал (`IoU`):** Нохойны бодит хүрээтэй харьцуулахад **`BOOSTING` (`0.5099`)**, `STATIC` (`0.4806` — оператор нохойг төвд барьдаг тул), **`CSRT` (`0.4695`)** нохойг дагасан бол **`MEDIANFLOW` (`0.1180`)** ба **`MIL` (`0.2088`)** арын өвсний урсгалд татагдаж хоцорсон ([phone_moving_camera_summary.csv](results/csv/phone_moving_camera_summary.csv)).
+`stable` бичлэгт жижиг тэрэгний тэмдэглэсэн хүрээ `98 × 59 px`-ээс `121 × 87 px` болж томорсон. CSRT **0.8505**, MEDIANFLOW **0.8267**, KCF **0.7213** дундаж IoU авсан. CSRT үнэлгээний **57/57** кадрт 0.50 босгыг хангав. Тогтмол хэмжээтэй KCF, BOOSTING, MIL-ийн хүрээ тэрэгний төв орчим үлдсэн ч томорсон дүрсийг бага хамарчээ. TLD-ийн хүрээ дээврийн хэсэгт хумигдаж, дундаж IoU **0.4070** болсон.
 
-![Өвс урсах үеийн DIS оптик урсгал ба RANSAC нөхөлтийн ялгаа](results/figures/custom_videos/moving_camera_flow.png)
-*Зураг 4. Эх дүрсгүй цэвэр `DIS` урсгалын `HSV` зураглал (`max = 12 px`). `orig #505`-т тэнгэрийн хаяа/мод бараан болж нохой тодорсон бол `orig #481`-т зүүн дээд модны хэсэгт affine загвар эвдэрч ягаан үлдэгдэл урсгал нэмэгджээ.*
+![Тэрэгний тэмдэглэсэн хүрээний талбайн өсөлт ба найман аргын дундаж IoU](results/figures/custom_videos/stable_scale_iou.png)
 
----
+*Тэрэг томорсон тайрдаст CSRT болон CSRT_REDETECT ижил 0.8505 дундаж IoU авсныг баганан график харуулна.*
 
-## 3. Алим шилний дараа яаж харагдав?
+## 3. Тунгалаг хавтан · дүрс нь гажих алим
 
-Босоо линз хавтан нь улаан алимыг бүдгэрүүлэн хэвтээ сунгадаг боловч бүрэн нуудаггүй тул **`occlusion` тайрдсын (`orig #42–#235`, `194` кадр) бүх кадрт алим харагдсан (`absent_frames = 0`)**. Шилний цаана алим сунаж харагдсан ч **`CSRT` (`0.6225`) болон `CSRT_REDETECT` (`0.6225`) нь `193` үнэлгээний кадр бүрд (`100%`) `0.5` босгыг давж тасралтгүй дагасан**. Харин тогтмол авсаархан хүрээтэй **`KCF` хамгийн өндөр дундаж `IoU = 0.7190` (`98.96% ≥ 0.5`)** авсан бол `TLD` (`5.18% ≥ 0.5`) болон `MEDIANFLOW` (`fail = 18.13%`) шилний зураасанд төөрч шилний дараа эргэж олоогүй ([phone_occlusion_summary.csv](results/csv/phone_occlusion_summary.csv)).
+![Тунгалаг хавтангийн цаагуур өнгөрөх алимны гараар шошголсон хүрээ болон KCF, CSRT-ийн хүрээ](results/figures/custom_videos/tracking_occlusion.gif)
 
-- **Бүрэн `0%` халхлалтаас тусад нь ялгах нь:** `occlusion` бичлэг нь тунгалаг хугаралт (`absent_frames = 0`) тул `CSRT` огт тасраагүй (`redetect_calls = 0`). Объект **`0%` харагдахаар бүрэн далд ороод нөгөө талаас гарч ирэх** үед хэрхэн ажилладгийг доорх 4-р хэсэгт хэмжлээ.
+*Алим тунгалаг хавтангийн цаагуур ороход дүрс нь сунаж гажиж, хавтангийн ирмэгээс гарахад буцаад дугуувтар болж байгааг ажиглаарай.*
 
-![Алим ба шилний кадр бүрийн IoU цагийн шугам](results/figures/custom_videos/occlusion_iou_timeline.png)
-*Зураг 5. `occlusion` бичлэгийн `193` үнэлгээний кадр бүрийн IoU. `KCF` өндөр дундажтай (`0.7190`), `CSRT` кадр бүрд тасралтгүй `≥ 0.50` байсан бол `MIL` `31` кадр хоцорч, `TLD`/`MEDIANFLOW` сэргээгүй.*
+**Эх кадр `#42–#235`** · GIF-д 194 кадр, үнэлгээнд 193 кадр · [Бүтэн MP4](data/phone_videos/occlusion.mp4) · [Гараар шошголсон хүрээ](results/csv/phone_occlusion_gt.csv) · [KCF](results/csv/track_occlusion_KCF.csv) · [CSRT](results/csv/track_occlusion_CSRT.csv) · [Хэмжилтийн дүн](results/csv/phone_occlusion_summary.csv)
 
----
+Алим бүрэн алга болоогүй (`absent_frames = 0`). CSRT, CSRT_REDETECT хоёр **193/193** кадрт босгыг хангасан. KCF **0.7190** дундаж IoU-аар тэргүүлж, **191/193** кадрт босгыг хангасан. MIL шилнээс гарсан заагаас 31 кадрын дараа босгод хүрсэн.
 
-## 4. Хэрэм модны цаагуур ороход дагагч эргэж олох уу?
+![Линзэн хавтангийн цаагуур өнгөрөх алимны кадр бүр дэх IoU ба амжилтын 0.50 босго](results/figures/custom_videos/occlusion_iou_timeline.png)
 
-Шалгасан Wikimedia Commons-ийн есөн бичлэгт нэг хэрэм модны цаагуур бүрэн ороод нөгөө талаас гарах тасралтгүй хэсэг таараагүй. Тиймээс `TylerMascola`-ийн хэрмийн фото, `Ilikecheese`-ийн модны фотогоор `squirrel_occlusion` хяналттай дарааллыг үүсгэв. Хоёр фото `CC0 1.0` лицензтэй. Дараалал нь `720×420`, `66` кадр, `12 FPS` буюу `5.50 сек`. [Дараалал үүсгэх код](squirrel_occlusion_lab.py) · [Зургийн эх сурвалж](NOTICE.md)
+*Алим шилний цаана байх хоёр хэсгийг сүүдэрлэсэн бөгөөд CSRT-ийн шугам 0.50 босгоос доош ороогүй.*
 
-Харагдах маск 25-аас цөөн пикселтэй бол хүрээний үнэлгээнд далд гэж тэмдэглэсэн. `#28`-д маскны **0.05%** үлдсэн, `#29–#36`-д харагдах маск 0 байв. `#37`-д хэрэм дахин харагдах босгыг давсан. Нийт **9 кадр далд** гэж үнэлсэн. Дундаж IoU-д анхны кадрыг хасаад харагдах **56 кадр** орсон. [Кадрын шошго](results/csv/squirrel_occlusion_gt.csv)
+## 4. Хяналттай дараалал · хэрмийн бүрэн халхлалт ба сэргэлт
 
-![Хэрэм модны их биеийн цаагуур орж гарч ирэх бүрэн халхлалт (KCF vs TLD)](results/figures/custom_videos/squirrel_occlusion.gif)
-*Зураг 6. KCF `#23`-аас хүрээ гаргахаа больж, далд гэж үнэлсэн 9 кадрт буруу хүрээ гаргаагүй (0/9). Энэ тайрдаст хэрмийг эргэж олоогүй. TLD тэр 9 кадр бүрд буруу хүрээ гаргасан (9/9). Хэрэм нөгөө талаас гарсны дараа TLD-ийн IoU `#49`-д `0.7535` болж, `#51`-д гурван кадрын шалгуур батлагдсан.*
+Хэрмийн дарааллыг хоёр CC0 гэрэл зургаар үүсгэсэн. 25-аас цөөн харагдах маскны пикселтэй кадрыг далд гэж үнэлэв. `#28`-д маскны 0.05% харагдаж, `#29–#36`-д харагдах маск 0, `#37`-д хэрэм дахин харагдсан. Нийт **66 кадр**, GIF-ийн урт **5.50 сек**. [Кадрын шошго](results/csv/squirrel_occlusion_gt.csv) · [Фотоны эх сурвалж](NOTICE.md)
 
-![Харагдах, бүрэн далд болох, буцаж гарсны дараах гурван кадр](results/figures/custom_videos/squirrel_occlusion_keyframes.png)
-*Зураг 7. Хэрэм `#15`-д харагдаж, `#32`-т бүрэн далд орсон. `#51`-д TLD-ийн сэргэлт батлагдсан ч CSRT ба CSRT_REDETECT-ийн хүрээ модны их бие дээр үлдсэн. Энэ туршилтад CSRT_REDETECT дахин хайлтаа асаагаагүй (`redetect_calls = 0`). [Бүрэн хэмжилт](results/csv/squirrel_occlusion_summary.csv).*
+![Хэрэм модны цаагуур өнгөрөхөд KCF-ийн хүрээ алга болж, TLD-ийн хүрээ холтос дээр үлдээд хэрмийг дахин олж байгаа нь](results/figures/custom_videos/squirrel_occlusion.gif)
 
-Хүснэгтийн `Failure %` нь харагдах кадрт хүчинтэй хүрээ гараагүй хувийг заана. `FP` нь далд гэж үнэлсэн кадрт гарсан буруу хүрээ. Сэргэлтийг хэрэм дахин харагдсан `#37`-оос тоолж, IoU ≥ 0.50 гурван кадр дараалан хүрсэн эхний ба баталгаажсан кадрыг бичив.
+*KCF далд үед хүрээ гаргаагүй бөгөөд хэрмийг эргэж олоогүй, харин TLD буруу хүрээ гаргасан ч #49-д IoU 0.7535 хүрч #51-д сэргэлтийн шалгуурыг хангасан.*
+
+![Хэрэм харагдах 15-р, бүрэн далд 32-р, TLD-ийн сэргэлт батлагдсан 51-р кадр](results/figures/custom_videos/squirrel_occlusion_keyframes.png)
+
+*Хэрэм буцаж гарсан #51-д TLD хэрэм дээр, CSRT-ийн хүрээ модны их бие дээр байна.*
+
+Хүснэгтийн `Failure %` нь харагдах кадрт хүчинтэй хүрээ гараагүй хувь. `FP` нь далд гэж үнэлсэн кадрт гарсан буруу хүрээ. Сэргэлтийн эхний кадр болон IoU ≥ 0.50 гурван кадр дараалан хангасныг баталсан кадрыг `#37`-оос тоолов.
 
 | Алгоритм | Mean IoU | IoU ≥ 0.50 | Failure % | Далд кадрын FP (`9` кадр) | Сэргэлт (`first/confirmed`) | Algo FPS |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -78,21 +72,38 @@
 | **`KCF`** | 0.3043 | 35.71% | 60.71% | **`0 / 9` (`0.00%`)** | Эргэж олоогүй | 827.39 |
 | `STATIC` *(суурь)* | 0.0862 | 7.14% | 0.00% | 9 / 9 (`100%`) | Эргэж олоогүй | *(хассан)* |
 
----
+## Арга, хэмжилтийн нөхцөл
 
-## Дүгнэлт
+- **Даалгаврын давталт.** `06-Tracking-APIs.ipynb - Colaboratory.pdf`-ийн 1–2-р хуудасны BOOSTING, MIL, KCF, TLD, MEDIANFLOW дагагчийг OpenCV 4.14.0 болон 5.0.0-ийн API-тай тулгасан. `06-Optical-Flow.ipynb - Colaboratory.pdf`-ийн 1–3-р хуудасны Shi–Tomasi + Lucas–Kanade (`winSize=200×200`) болон Farnebäck-ийн HSV дүрслэлийг давтсан. [Давтах скрипт](reproduce_pdf.py) · [OpenCV API шалгалт](results/csv/tracker_bindings_cv414.csv) · [Вебкамерын 12/12 кадрын шалгалт](results/csv/webcam_smoke.csv)
+- **Объект дагах.** Бичлэгийн нэг ижил кадрын муж, анхны хүрээг бүх аргад өгсөн. Анхны кадрыг оноонд оруулаагүй. KCF ба CSRT объектын дүрсийг корреляцийн шүүлтүүрээр хайдаг. BOOSTING ба MIL эргэн тойрны хүрээнүүдийг ялгаж сурах загвараа шинэчилдэг. MEDIANFLOW цэгийн хөдөлгөөн ашигладаг. TLD дагах болон дахин илрүүлэх шаттай. CSRT_REDETECT нь алдагдлын дохиогоор загварыг дахин хайдаг. STATIC туршилт анхны хүрээг хөдөлгөхгүй барьдаг суурь арга. [Дагагчийн код](trackers.py) · [Үнэлгээний код](benchmark_track.py)
+- **Оптик урсгал.** Lucas–Kanade сонгосон цэгүүдийг, Farnebäck ба DIS дүрсний нягт хөдөлгөөнийг тооцно. Хөдөлгөөний бодит векторын шошготой өгөгдөлд таамагласан болон бодит векторын төгсгөлийн зөрүүг EPE-ээр (пиксел) хэмжсэн. Гурван нэмэлт бичлэгт урсгалын шошго байхгүй тул камерын нөхөлтийн өмнөх ба дараах дэвсгэрийн шилжилтийг харьцуулсан. [Оптик урсгалын код](benchmark_flow.py)
 
-![Галт тэрэг болон хэрмийн туршилтын гол кадрууд](results/figures/custom_videos/summary_good_vs_fail.png)
-*Зураг 8. Зүүн талд (`CC0 Léman Express #260`): хэмжээ нь тэлдэг `CSRT` (`0.83`) ойртож буй галт тэргийг бүтэн барьсан бол тогтмол хэмжээтэй `KCF` (`0.17`) жижиг хэвээр хоцорсон. Баруун талд (`CC0` хэрмийн бүрэн халхлалт `#51`, `+14` кадр): модны их биеийн цаанаас гарч ирэхэд **`TLD` (`0.77`)** цорын ганц сэргэсэн бол **`CSRT` ба `CSRT_REDETECT` (`0.00`)** хүрэн холтос дээр гацаж, **`KCF`** нь `0/9` хуурамч хүрээгүйгээр **`Алдсан`** хэвээр үлдсэн.*
+| Бодит векторын шошготой хос | Farnebäck EPE (px) | DIS_MEDIUM EPE (px) |
+| --- | ---: | ---: |
+| Middlebury RubberWhale | 0.3612 | 0.2258 |
+| Middlebury Grove2 | 0.5852 | 0.3189 |
+| MPI Sintel alley_1 clean | 0.8406 | 0.2581 |
+| MPI Sintel ambush_5 final | 4.1480 | 2.4601 |
 
-Тогтвортой камерын туршилтад CSRT ба CSRT_REDETECT хамгийн өндөр дундаж IoU авсан. Алимны бичлэгт KCF хамгийн өндөр дундажтай, CSRT 193 үнэлгээний кадр бүрд 0.50 босгыг хангасан. Хэрмийн дараалалд TLD эргэж олсон ч далд гэж үнэлсэн бүх кадрт буруу хүрээ гаргав. KCF далд үед хүрээ гаргаагүй ч дараа нь эргэж олоогүй. CSRT_REDETECT-ийн үр дүн эхээс шалтгаалсан. Дугуйн хяналттай туршилтад дахин олсон ч хэрмийн болон LaSOT-ийн туршилтад эргэж олоогүй. [Хэрмийн хэмжилт](results/csv/squirrel_occlusion_summary.csv) · [Дугуйн хэмжилт](results/csv/track_summary.csv) · [LaSOT хэмжилт](results/csv/track_generalization_lasot.csv)
+Энд бүх хүчинтэй пикселийн дундаж EPE-г харьцуулсан. [Бүрэн EPE хүснэгт](results/csv/flow_summary.csv) · [Харьцуулсан график](results/figures/flow_error_and_dis_cc0.png)
 
----
+## Дүгнэлт ба хязгаарлалт
 
-## Лабораторийн суурь туршилтууд, зассан баримтууд ба дахин ажиллуулах заавар
+![Галт тэрэгний сүүлчийн кадарт CSRT-ийн хүрээ тэлсэн, хэрмийг буцаж гарахад TLD дахин олсон хоёр жишээ](results/figures/custom_videos/summary_good_vs_fail.png)
 
-### Нэмэлт туршилт: `CC0 Léman Express` (`orig #110–#260`, 151 кадр @ 30 FPS)
-Нүүрний GIF болон хөдөлгөөнгүй кадрын бодит үнэлгээний бүтэн үр дүн ([phone_commons_leman_express_summary.csv](results/csv/phone_commons_leman_express_summary.csv)):
+*Зүүн талд галт тэрэгний #260-д CSRT 0.83, KCF 0.17 IoU авсан, баруун талд хэрмийн #51-д TLD 0.77 хүрэхэд CSRT-ийн хүрээ холтос дээр үлдсэн.*
+
+Хэрмийн туршилт объектоо алдсанаа мэдэх ба эргэж олох хоёр тусдаа чадвар болохыг харуулсан. Энд CSRT_REDETECT-ийн дахин хайлт огт асаагүй. Өмнөх хяналттай дугуйн туршилтад CSRT_REDETECT дахин олж чадсан, LaSOT-ийн `bicycle-11`-д сэргээгүй. Халхлалтын 3, 11, 22 кадрын туршилтын 11 кадртай төөрөгдүүлэгч бүхий хувилбарт TLD 31 кадрт төстэй объектыг андуурсан. Эдгээр үр дүнг тайрдас бүрийн нөхцөлд тайлбарлав. [Дугуйн туршилт](results/csv/track_summary.csv) · [Халхлалтын шатлал](results/csv/track_occlusion_ladder.csv) · [LaSOT хэмжилт](results/csv/track_generalization_lasot.csv)
+
+## Нэмэлт туршилт · Léman Express галт тэрэг
+
+![Ойртож буй Léman Express галт тэрэгний гараар тэмдэглэсэн хүрээ зүүн талд, KCF ба CSRT-ийн хүрээ баруун талд](results/figures/custom_videos/tracking_demo.gif)
+
+*Галт тэрэг ойртоход KCF-ийн улбар шар хүрээ ижил хэмжээтэй үлдэж, CSRT-ийн ногоон хүрээ галт тэрэгтэй хамт тэлж байна.*
+
+`1280 × 720`, 30 FPS эх бичлэгийн `#110–#260` мужийн 151 кадраас эхний кадрыг хасаж үнэлсэн. Дундаж IoU нь KCF-д **0.4400**, CSRT-д **0.7767** байв. Сүүлчийн кадарт KCF **0.17**, CSRT **0.83** IoU авсан. `684 × 285`, 10 FPS GIF-ийн урт 5.10 сек. Эх бичлэгийг `Thibaut120094` авсан бөгөөд `CC0 1.0` лицензтэй. [Галт тэрэгний хэмжилт](results/csv/phone_commons_leman_express_summary.csv) · [Хөдөлгөөнгүй гол кадрууд](results/figures/custom_videos/tracking_demo_keyframes.png) · [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Arriv%C3%A9e_en_gare_du_L%C3%A9man_Express_pour_Coppet_(2019-12-16).webm)
+
+`#246`-д `DIS_MEDIUM`-ийн дэвсгэрийн хөдөлгөөн 3.56-аас 0.36 px болж 89.98% буурсан. 38 хос кадрын медиан бууралт 74.91%. [Галт тэрэгний урсгалын CSV](results/csv/phone_commons_leman_express_flow_pairs.csv)
 
 | Tracker | Mean IoU | IoU ≥ 0.50 (%) | Failure % | Algo ms (FPS) | E2E ms (FPS) |
 | :--- | :---: | :---: | :---: | :---: | :---: |
@@ -105,20 +116,10 @@
 | `BOOSTING` | 0.4327 | 31.33% | 0.0% | 32.59 (30.68) | 41.76 (23.95) |
 | `STATIC` *(суурь)* | 0.2870 | 22.67% | 0.0% | — | 8.11 (123.29) |
 
-> Dense flow & камер нөхөлт (`orig #110–#260`, `phone_commons_leman_express_flow_pairs.csv`): камер дагах эргэлт хийдэг `#246` кадрт `DIS_MEDIUM` дэвсгэрийн хөдөлгөөнийг **89.98%** (`3.56 px → 0.36 px`) дарсан; бүх 38 хосын медиан бууралт **74.91%** (`LK 10/10 = 100%`).
+<details>
+<summary>Гурван үндсэн бичлэгийн дэлгэрэнгүй хэмжилт</summary>
 
-### Өмнөх үндсэн судалгаа ба PDF давталт (баталгаажуулж шинэчилсэн тоо)
-- **Сургалтын PDF-ийн давталт ([reproduce_pdf.py](reproduce_pdf.py)):**
-  - `06-Tracking-APIs.ipynb - Colaboratory.pdf` (х. 1–2): `BOOSTING`, `MIL`, `KCF`, `TLD`, `MEDIANFLOW` API ба `cv2.legacy` binding шалгалт (`4.14.0` болон `5.0.0`, [tracker_bindings_cv414.csv](results/csv/tracker_bindings_cv414.csv)).
-  - `06-Optical-Flow.ipynb - Colaboratory.pdf` (х. 1–3): `Shi–Tomasi + LK (winSize=200×200)` болон `Farnebäck` dense HSV (`max=12 px` тогтмол масштаб) + вебкамер `smoke run` (`12/12`, [webcam_smoke.csv](results/csv/webcam_smoke.csv)).
-- **Халхлалтын шатлал ба дистрактор ([track_occlusion_ladder.csv](results/csv/track_occlusion_ladder.csv)):** Халхлалтын бодитоор хэмжсэн шатлал нь **`3`, `11`, `22` кадр** (`absent_frames = 3, 11, 22`). `11` кадр + төстэй объекттой нөхцөлд **`TLD` `31` кадр (`distractor_jumps = 31`) хуурамч объект руу андуурч `0.1971`** болсон бол `CSRT_REDETECT` **`0.6529`** авсан.
-- **Нийтийн Optical Flow EPE (`all_valid_px_epe`, [flow_summary.csv](results/csv/flow_summary.csv)):**
-  - `Middlebury`: **`DIS_MEDIUM`-ийн `0.226–0.319 px`** хүрээ нь зөвхөн `Middlebury`-ийн хоёр хост (`RubberWhale = 0.2258 px`, `Grove2 = 0.3189 px`) хамаарна (`Farnebäck 0.3612` ба `0.5852 px`).
-  - `MPI Sintel`: сонгосон хоёр хосын үнэн пиксел EPE нь тусдаа — `alley_1 clean` дээр `DIS_MEDIUM = 0.2581 px` (`Farnebäck 0.8406 px`), харин хурдан хөдөлгөөнт `ambush_5 final` дээр `DIS_MEDIUM = 2.4601 px` (`Farnebäck 4.1480 px`).
-  - Ижил судалгааны нэгдсэн график ба Word хувилбар: [tracking_flow_metrics.png](results/figures/tracking_flow_metrics.png), [flow_error_and_dis_cc0.png](results/figures/flow_error_and_dis_cc0.png), `Tracking_Lab_Report_MN.docx` ([build_report.py](build_report.py)).
-
-### Гурван үндсэн видеоны 8 алгоритмын бүтэн хэмжилт ([phone_videos_summary.csv](results/csv/phone_videos_summary.csv))
-`STATIC` нь алгоритмын тооцоололгүй суурь хүрээ тул хурдны эрэмбэлэлтээс хасав (`1 CPU thread`, median/p95).
+**Гурван үндсэн бичлэг.** Алгоритмын хугацааг нэг урсгалтай CPU дээр хэмжсэн. `Algo` нь дагагчийн хугацаа, `E2E` нь кадр унших, боловсруулах зэрэг оролт, гаралттай нийт хугацаа. STATIC-ийг алгоритмын хурдны эрэмбэд оруулаагүй. [Нэгдсэн CSV](results/csv/phone_videos_summary.csv)
 
 | Бичлэг | Tracker | Mean IoU | IoU ≥ 0.50 (%) | Failure % | Drift (`IoU<0.2`) | Сэргэлт (`first/conf`) | Algo FPS | E2E FPS |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -140,39 +141,60 @@
 | `occlusion` | `TLD` | 0.3058 | 5.18% | 0.0% | 23 | Эргэж олоогүй | 16.70 | 15.02 |
 | `occlusion` | `STATIC` *(суурь)* | 0.2695 | 23.83% | 0.0% | 126 | 22 / 24 (`153/155`) | *(хассан)* | 149.65 |
 
-### Хэрмийн GIF-ийг дахин үүсгэх
+</details>
 
-Төслийн үндсэн хавтсаас ажиллуул. Хэрмийн хоёр эх фотог скрипт өөрөө татна. GIF үүсгэхэд `ffmpeg` болон DejaVu Sans фонтууд хэрэгтэй.
+## Ажиллуулах
+
+Linux дээр төслийн үндсэн хавтаснаас ажиллуул. Нийтэлсэн хэмжилтийн орчин нь Intel Core 5 120U, нэг CPU урсгал, Python 3.14.4, `opencv-contrib-python==4.14.0.94`, FFmpeg 8.0.1. GIF үүсгэхэд `ffmpeg`, DejaVu Sans фонтууд хэрэгтэй. Эх файл татах команд `curl` ашиглана.
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python squirrel_occlusion_lab.py --rebuild-seq
-python make_three_videos_figures.py --only-squirrel
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
 
-Дээрх команд хэрмийн GIF болон гурван кадрын PNG-г `results/figures/custom_videos/`-д гаргана.
-
-### Бүх туршилтыг дахин ажиллуулах
-- **Орчин:** Linux (`x86_64`), Intel(R) Core(TM) 5 120U (`1 thread`), Python `3.14.4`, `opencv-contrib-python==4.14.0.94`, `ffmpeg 8.0.1`.
-- **Код & өгөгдлийн скриптүүд:** [config.py](config.py), [metrics.py](metrics.py), [trackers.py](trackers.py), [dataset_prep.py](dataset_prep.py), [reproduce_pdf.py](reproduce_pdf.py), [benchmark_track.py](benchmark_track.py), [benchmark_flow.py](benchmark_flow.py), [custom_video_lab.py](custom_video_lab.py), [squirrel_occlusion_lab.py](squirrel_occlusion_lab.py), [make_figure.py](make_figure.py), [make_three_videos_figures.py](make_three_videos_figures.py), [tests/test_metrics_and_pipeline.py](tests/test_metrics_and_pipeline.py).
-
-Гурван үндсэн видеог `data/phone_videos/` дотор `stable.mp4`, `moving_camera.mp4`, `occlusion.mp4` нэрээр байрлуул. Эх бичлэгийн кадрын муж нь дээрх хүснэгттэй таарах ёстой. Галт тэрэгний эх видеог доорх командаар татна. [Эх өгөгдлийн бүртгэл](NOTICE.md)
+### Галт тэрэгний хэмжилтийг давтах
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install --upgrade pip && pip install -r requirements.txt
-
 mkdir -p data/commons
 curl -fL -o data/commons/leman_express_cc0.webm \
   'https://upload.wikimedia.org/wikipedia/commons/9/9b/Arriv%C3%A9e_en_gare_du_L%C3%A9man_Express_pour_Coppet_%282019-12-16%29.webm'
 
-python dataset_prep.py --all
-python benchmark_flow.py && python benchmark_track.py
-python custom_video_lab.py --run-three
-python squirrel_occlusion_lab.py --rebuild-seq
 python custom_video_lab.py --evaluate data/commons/leman_express_cc0.webm \
   --gt results/csv/commons_leman_express_gt.csv --start-frame 110 --end-frame 260 --seq-id commons_leman_express
-python make_figure.py && python make_three_videos_figures.py
+```
+
+Үндсэн гаралт нь `results/csv/phone_commons_leman_express_summary.csv`. Кадр тус бүрийн хүрээ `results/csv/track_commons_leman_express_*.csv`, урсгалын хэмжилт `results/csv/phone_commons_leman_express_flow_pairs.csv`-д үүснэ.
+
+### Хэрмийн GIF-ийг үүсгэх
+
+Гэрэл зургуудыг скрипт татаж, хяналттай дараалал болон шошгыг үүсгэнэ.
+
+```bash
+python squirrel_occlusion_lab.py --rebuild-seq
+python make_three_videos_figures.py --only-squirrel
 python -m unittest discover -s tests -v
 ```
+
+Хэмжилт `results/csv/squirrel_occlusion_summary.csv`-д, `squirrel_occlusion.gif` ба `squirrel_occlusion_keyframes.png` нь `results/figures/custom_videos/`-д үүснэ.
+
+### PDF-ийн давталт ба бүтэн туршилт
+
+Гурван эх MP4 нь `data/phone_videos/` дотор `stable.mp4`, `moving_camera.mp4`, `occlusion.mp4` нэрээр байна. GIF үүсгэх команд эдгээр MP4, `results/csv/phone_*_gt.csv`, `results/csv/track_*.csv` файлуудыг уншиж `results/figures/custom_videos/tracking_{stable,moving_camera,occlusion}.gif` үүсгэнэ. Бүтэн туршилтын өмнө галт тэрэг, хэрмийн дээрх командыг ажиллуул. [Эх өгөгдөл ба лицензийн бүртгэл](NOTICE.md)
+
+```bash
+python make_three_videos_figures.py --phone-gifs
+```
+
+```bash
+python dataset_prep.py --all
+python reproduce_pdf.py --mode all-pdf --no-show
+python benchmark_flow.py && python benchmark_track.py
+python custom_video_lab.py --run-three
+python make_figure.py && python make_three_videos_figures.py
+python make_three_videos_figures.py --phone-gifs
+```
+
+PDF-ийн давталтын бичлэг `results/videos/pdf_replay_*.mp4`-д, хэмжилт `results/csv/`-д, тайлангийн зураг `results/figures/`-д үүснэ.
+
+[Тохиргоо](config.py) · [Хэмжүүрийн тооцоо](metrics.py) · [Өгөгдөл бэлтгэх код](dataset_prep.py) · [Зураг үүсгэх код](make_three_videos_figures.py) · [Тестүүд](tests/test_metrics_and_pipeline.py) · [Суурь туршилтын график](results/figures/tracking_flow_metrics.png) · [Word тайлан үүсгэх код](build_report.py)
