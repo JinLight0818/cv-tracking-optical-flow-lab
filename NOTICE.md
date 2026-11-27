@@ -13,7 +13,7 @@ Algorithmic descriptions and API verification reference:
 
 ## 2. Dataset Licenses (Separate from Code License)
 
-Raw third-party datasets and course PDFs are **excluded** via `.gitignore`. The three video inputs listed in item 6 are used in this private repository.
+Raw benchmark datasets and course PDFs are **excluded** via `.gitignore`. See item 6 for the three external video clips.
 
 1. **Wikimedia Commons `File:Front_Side_of_Bicyle.jpg`**
    - URL: `https://commons.wikimedia.org/wiki/File:Front_Side_of_Bicyle.jpg`
@@ -44,7 +44,7 @@ Raw third-party datasets and course PDFs are **excluded** via `.gitignore`. The 
    - `Камер өөрөө хөдөлж байгаа жишээ.mp4` → `data/phone_videos/moving_camera.mp4`. Insta360 ONE X2 RC buggy and dog clip. Source and repository copy are both `1920 × 1080`, 25 fps, 2,299 frames, 91.960 s. Source SHA-256 `df3dd08119b28dae02fa80675eb5240665d1ce1dea035b15a24cadbfab58f71e`. Repository copy SHA-256 `188c475d8d540a7cc78b447e0349bdbba46bf38b0d403d8cc7acd2ed2716edd0`. Measured source frames 405–515.
    - `Объект халхлагдаад дахин гарч ирэх жишээ.mp4` → `data/phone_videos/occlusion.mp4`. Invisibility Shield lenticular refraction apple clip, `720 × 1280`, 24 fps, 241 frames, 10.042 s. SHA-256 `fd1c402e850052c9f446acf846c39bf816e7f2c17561c308e9f71fa54566294f`. Measured source frames 42–235.
    - The user-provided DASH inputs carry the container tag `Google Inc.`. The `stable.mp4` and `occlusion.mp4` copies retain the source bytes. The complete `moving_camera.mp4` was re-encoded directly from the source with two-pass H.264 at 2,110 kb/s (52,145,895 → 24,362,410 bytes) after the GitHub blob upload rejected the larger file. All 2,299 frame timestamps match the source. The derived `results/figures/custom_videos/tracking_{stable,moving_camera,occlusion}.gif` files show selected frames from the measured ranges, cropped and annotated with CSV bounding boxes.
-   - The source videos and GIFs are included for this lab in the private repository. Public redistribution terms remain unverified. The code license does not cover these clips.
+   - The three video files and their derived GIFs are available in this public repository. Public redistribution terms remain unverified. The code license does not cover these clips.
 
 7. **Wikimedia Commons `File:Arrivée en gare du Léman Express pour Coppet (2019-12-16).webm`**
    - Page URL: `https://commons.wikimedia.org/wiki/File:Arriv%C3%A9e_en_gare_du_L%C3%A9man_Express_pour_Coppet_(2019-12-16).webm`
