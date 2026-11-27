@@ -309,7 +309,7 @@ def _render_leman_split_frame(
     canvas.paste(right_img, (pad * 2 + panel_w, top_h))
 
     # Header titles and synchronized frame/time
-    draw.text((pad, 8), "Бодит кадр + GT (гар шошго)", fill=(15, 23, 42), font=font_hdr)
+    draw.text((pad, 8), "Хүний тэмдэглэсэн жишиг хүрээ (GT)", fill=(15, 23, 42), font=font_hdr)
     draw.text((pad, 25), f"CC0 Léman Express  |  #{orig_f}  ({t_sec:.2f}с)", fill=(71, 85, 105), font=font_sub)
 
     rx = pad * 2 + panel_w
