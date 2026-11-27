@@ -19,7 +19,7 @@ Raw third-party datasets and course PDFs are **excluded** via `.gitignore`. The 
    - URL: `https://commons.wikimedia.org/wiki/File:Front_Side_of_Bicyle.jpg`
    - License: **CC0 1.0 Universal Public Domain Dedication**
    - SHA-256: `51c4b3bd6f41eb23c3b4153a019e4b73f25a0cbc013ee535de51aa030bb26266`
-   - Published derived demos (`results/figures/*_cc0.png`, `results/figures/demo_bicycle_occlusion.mp4`) derive solely from this CC0 asset and matplotlib plots.
+   - Published derived demos (`results/figures/*_cc0.png`, `results/figures/demo_bicycle_occlusion.mp4`, `results/figures/demo_bicycle_occlusion.gif`) derive solely from this CC0 asset and matplotlib plots.
 
 2. **DAVIS 2017 (`bmx-trees`, `car-shadow`, `scooter-black`)**
    - URL: `https://davischallenge.org/davis2017/code.html`
